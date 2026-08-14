@@ -11,6 +11,7 @@ def to_graphviz(
         *,
         highlighted_states: Iterable[str] = (),
         highlighted_transitions: Iterable[Transition[str, str]] = (),
+        current_state: str | None = None,
 ) -> Digraph:
     highlighted_states = set(highlighted_states)
     highlighted_transitions = set(highlighted_transitions)
@@ -29,6 +30,11 @@ def to_graphviz(
             f"{unknown_transitions!r}"
         )
 
+    if current_state is not None and current_state not in ts.states:
+        raise ValueError(
+            f"Cannot mark unknown current state: {current_state!r}"
+        )
+
     graph = Digraph()
     for state in sorted(ts.states):
         propositions = sorted(ts.labels(state))
@@ -42,6 +48,9 @@ def to_graphviz(
 
         if state in highlighted_states:
             attributes["penwidth"] = "3"
+
+        if state == current_state:
+            attributes["peripheries"] = "2"
 
         graph.node(
             state,

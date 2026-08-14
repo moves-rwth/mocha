@@ -13,7 +13,7 @@ from mocha.models.transition_system import (
 @dataclass(frozen=True)
 class InvariantResult(Generic[State]):
     satisfies: bool
-    violating_state: State | None = None
+    counterexample: tuple[State, ...] | None = None
 
 @dataclass(frozen=True)
 class InvariantStep(Generic[State]):
@@ -38,6 +38,11 @@ def check_invariant(
     visited: set[State] = set()
     to_explore: list[State] = list(ts.initial_states)
 
+    predecessor: dict[State, State | None] = {
+        state: None
+        for state in ts.initial_states
+    }
+
     while to_explore:
         state = to_explore.pop()
 
@@ -58,13 +63,23 @@ def check_invariant(
                 )
 
         if not satisfies:
+            path: list[State] = []
+            current: State | None = state
+
+            while current is not None:
+                path.append(current)
+                current = predecessor[current]
+
+            path.reverse()
+
             return InvariantResult(
                 satisfies=False,
-                violating_state=state,
+                counterexample=tuple(path),
             )
 
         for successor in ts.post(state):
-            if successor not in visited:
+            if successor not in visited and successor not in predecessor:
+                predecessor[successor] = state
                 to_explore.append(successor)
 
     return InvariantResult(
