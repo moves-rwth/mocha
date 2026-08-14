@@ -2,6 +2,7 @@ from typing import Iterable
 
 from graphviz import Digraph
 
+from .overlay import TransitionSystemOverlay
 from mocha.models.transition_system import Transition,TransitionSystem
 
 
@@ -83,4 +84,19 @@ def to_graphviz(
                 penwidth="3",
             )
 
+    for index, state in enumerate(sorted(ts.initial_states)):
+        marker = f"__initial_{index}"
+        graph.node(marker, label="", shape="none", width="0", height="0")
+        graph.edge(marker, state)
+
     return graph
+
+def visualise_step(
+        ts: TransitionSystem[str, str, str],
+        step: TransitionSystemOverlay[str, str],
+) -> Digraph:
+    return to_graphviz(
+        ts,
+        highlighted_states=step.highlighted_states,
+        highlighted_transitions=step.highlighted_transitions,
+    )

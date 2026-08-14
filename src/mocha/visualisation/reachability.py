@@ -1,0 +1,23 @@
+"""Graphviz rendering helpers for reachability-analysis results."""
+
+from graphviz import Digraph
+
+from mocha.algorithms.reachability import ReachabilityStep
+from mocha.models.transition_system import TransitionSystem
+
+from .transition_system import to_graphviz
+
+
+def visualise_reachability_step(
+        ts: TransitionSystem[str, str, str],
+        step: ReachabilityStep[str],
+) -> Digraph:
+    """Render ``ts`` with states reached at ``step`` highlighted.
+
+    The returned :class:`graphviz.Digraph` can be passed directly to IPython's
+    ``display`` function.
+    """
+    return to_graphviz(
+        ts,
+        highlighted_states=step.reachable_states,
+    )
