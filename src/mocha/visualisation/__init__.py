@@ -7,6 +7,7 @@ from .overlay import TransitionSystemOverlay
 __all__ = [
     "TransitionSystemOverlay",
     "to_graphviz",
+    "visualize_invariant_step",
     "visualise_reachability_step",
     "visualise_step",
 ]
@@ -22,4 +23,8 @@ def __getattr__(name: str) -> Any:
         from .reachability import visualise_reachability_step
 
         return visualise_reachability_step
+    if name == "visualize_invariant_step":
+        from .invariance import visualize_invariant_step
+
+        return visualize_invariant_step
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
