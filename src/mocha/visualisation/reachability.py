@@ -16,6 +16,16 @@ def visualise_reachability_step(
 
     The returned :class:`graphviz.Digraph` can be passed directly to IPython's
     ``display`` function.
+
+    Args:
+        ts: The string-valued transition system to render.
+        step: The reachability snapshot whose states are highlighted.
+
+    Returns:
+        A Graphviz directed graph produced by :func:`to_graphviz`.
+
+    Raises:
+        ValueError: If the step refers to a state outside ``ts``.
     """
     return to_graphviz(
         ts,

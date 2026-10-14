@@ -1,4 +1,10 @@
-from typing import Iterable
+"""Render transition systems and lasso runs as Graphviz directed graphs.
+
+States are drawn as nodes whose external labels show the atomic propositions
+that hold in them.  Initial states receive an incoming edge from an invisible
+marker.  Highlighted states and transitions use a thicker outline; a current
+state receives a double outline.
+"""
 
 from graphviz import Digraph
 
@@ -13,6 +19,28 @@ def to_graphviz(
         highlighted_transitions: Iterable[Transition[str, str]] = (),
         current_state: str | None = None,
 ) -> Digraph:
+    """Build a Graphviz representation of a transition system.
+
+    The graph contains one node per state and one labelled edge for each
+    source-target pair.  Actions on ordinary and highlighted transitions are
+    emitted as separate edges so the highlight remains visible when both kinds
+    connect the same pair of states.  States and actions are sorted to make the
+    generated graph deterministic. Generated node IDs keep state names separate
+    from Graphviz syntax and initial-state markers. Labels are literal text.
+
+    Args:
+        ts: The string-valued transition system to render.
+        highlighted_states: States to draw with a thicker outline.
+        highlighted_transitions: Transitions to draw with a thicker edge.
+        current_state: A state to draw with a double outline.
+
+    Returns:
+        A :class:`graphviz.Digraph` ready to display, render, or save.
+
+    Raises:
+        ValueError: If a highlighted state or transition, or ``current_state``,
+            does not belong to ``ts``.
+    """
     highlighted_states = set(highlighted_states)
     highlighted_transitions = set(highlighted_transitions)
 
@@ -20,7 +48,7 @@ def to_graphviz(
     if unknown_states:
         raise ValueError(
             f"Cannot highlight unknown states: {unknown_states!r}"
-    )
+        )
 
     transitions = set(ts.transitions())
     unknown_transitions = highlighted_transitions - transitions
@@ -100,10 +128,24 @@ def to_graphviz(
 
     return graph
 
+
 def visualise_step(
         ts: TransitionSystem[str, str, str],
         step: TransitionSystemOverlay[str, str],
 ) -> Digraph:
+    """Render a transition system with an overlay's selections highlighted.
+
+    Args:
+        ts: The string-valued transition system to render.
+        step: The overlay that identifies states and transitions to emphasize.
+
+    Returns:
+        A Graphviz directed graph produced by :func:`to_graphviz`.
+
+    Raises:
+        ValueError: If the overlay refers to a state or transition outside
+            ``ts``.
+    """
     return to_graphviz(
         ts,
         highlighted_states=step.highlighted_states,

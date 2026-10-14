@@ -14,11 +14,26 @@ from mocha.models.transition_system import (
 
 @dataclass(frozen=True)
 class ReachabilityResult(Generic[State]):
+    """The fixed-point result of a reachability analysis.
+
+    Attributes:
+        reachable_states: Every state reachable from an initial state,
+            including the initial states themselves.
+    """
+
     reachable_states: frozenset[State]
 
 
 @dataclass(frozen=True)
 class ReachabilityStep(Generic[State]):
+    """An immutable snapshot of one reachability expansion.
+
+    Attributes:
+        iteration: Zero for the initial-state snapshot and incremented after
+            each expansion that discovers at least one state.
+        reachable_states: The states known to be reachable at this iteration.
+    """
+
     iteration: int
     reachable_states: frozenset[State]
 
@@ -28,6 +43,19 @@ def compute_reachable_states(
         *,
         on_step: Callable[[ReachabilityStep[State]], None] | None = None,
 ) -> ReachabilityResult[State]:
+    """Find every state reachable from an initial state.
+
+    ``on_step`` receives an initial snapshot, followed by one snapshot for
+    every expansion that discovers new states. The callback is not called for
+    the final expansion that reaches the fixed point.
+
+    Args:
+        ts: The transition system to analyse.
+        on_step: Optional callback for progress snapshots.
+
+    Returns:
+        The complete set of reachable states.
+    """
     reachable_states = set(ts.initial_states)
     iteration = 0
 
@@ -72,6 +100,14 @@ def trace_reachability(
     ReachabilityResult[State],
     ReachabilityStep[State],
 ]:
+    """Run reachability analysis and retain every reported step.
+
+    Args:
+        ts: The transition system to analyse.
+
+    Returns:
+        An analysis result together with its initial and expansion snapshots.
+    """
     steps: list[ReachabilityStep[State]] = []
 
     result = compute_reachable_states(

@@ -1,3 +1,5 @@
+"""Invariant checking for labelled transition systems."""
+
 from dataclasses import dataclass
 from typing import Generic, Iterable, Callable
 
@@ -12,11 +14,30 @@ from mocha.models.transition_system import (
 
 @dataclass(frozen=True)
 class InvariantResult(Generic[State]):
+    """The result of checking an invariant over reachable states.
+
+    Attributes:
+        satisfies: Whether every reachable state belongs to the requested
+            invariant set.
+        counterexample: A path from an initial state to a violating state, or
+            ``None`` when ``satisfies`` is true.
+    """
+
     satisfies: bool
     counterexample: tuple[State, ...] | None = None
 
+
 @dataclass(frozen=True)
 class InvariantStep(Generic[State]):
+    """An immutable snapshot produced while checking an invariant.
+
+    Attributes:
+        current_state: The reachable state currently being checked.
+        visited: All states examined through and including ``current_state``.
+        satisfies_invariant: Whether ``current_state`` belongs to the
+            invariant set.
+    """
+
     current_state: State
     visited: frozenset[State]
     satisfies_invariant: bool
@@ -27,6 +48,24 @@ def check_invariant(
         *,
         on_step: Callable[[InvariantStep[State]], None] | None = None,
 ) -> InvariantResult[State]:
+    """Check that every reachable state belongs to an invariant set.
+
+    Exploration starts from all initial states. If a reachable state is absent
+    from ``invariant_states``, the result includes a path from an initial state
+    to that state. Unreachable states do not affect the result.
+
+    Args:
+        ts: The transition system to analyse.
+        invariant_states: States in which the invariant holds.
+        on_step: Optional callback invoked for each examined reachable state.
+
+    Returns:
+        A successful result, or a counterexample path to the first violating
+        state encountered.
+
+    Raises:
+        ValueError: If ``invariant_states`` contains a state outside ``ts``.
+    """
     invariant_states = set(invariant_states)
 
     unknown = invariant_states - ts.states
@@ -92,7 +131,19 @@ def trace_invariant(
 ) -> AlgorithmTrace[
     InvariantResult[State],
     InvariantStep[State],
-] :
+]:
+    """Run invariant checking and retain every exploration step.
+
+    Args:
+        ts: The transition system to analyse.
+        invariant_states: States in which the invariant holds.
+
+    Returns:
+        The invariant result and one snapshot per examined state.
+
+    Raises:
+        ValueError: If ``invariant_states`` contains a state outside ``ts``.
+    """
     steps: list[InvariantStep[State]] = []
 
     result = check_invariant(

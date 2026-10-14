@@ -1,4 +1,4 @@
-"""Algorithm data structures for transition-system analyses."""
+"""Algorithms and traces for model checking and formula transformations."""
 
 from mocha.visualisation.overlay import TransitionSystemOverlay
 from .reachability import compute_reachable_states
