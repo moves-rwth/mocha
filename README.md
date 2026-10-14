@@ -1,4 +1,3 @@
-# Model Checking Assistant (MoChA/MoChi)
 # Model Checking Assistant (MoChA)
 
 MoChA is a small, typed Python library for representing labelled transition
