@@ -31,6 +31,10 @@ htmlcov/
 # Jupyter
 .ipynb_checkpoints/
 
+# Course materials
+/exercise_sheets/
+/slides/
+
 # IDE and editor files
 .idea/
 .vscode/
