@@ -163,6 +163,51 @@ The automaton must declare its complete alphabet $2^{\mathrm{AP}}$, including
 valuations that no system state currently uses. This follows the formal product
 definition and makes a mismatched proposition vocabulary explicit.
 
+## Visualisation
+
+With the `visualization` extra installed, `to_graphviz` returns a
+`graphviz.Digraph`. Nodes display their state identifier and atomic-proposition
+label; arrows from invisible markers identify initial states. Highlighted
+states and transitions have thicker outlines, and a current state has a double
+outline.
+
+```python
+from mocha.visualisation import to_graphviz
+
+graph = to_graphviz(system, highlighted_states={"running"})
+graph.render("system", format="svg", cleanup=True)
+```
+
+`visualise_step`, `visualise_reachability_step`, `visualise_invariant_step`,
+and `visualise_invariant_result` turn analysis snapshots and results into the
+same kind of graph.
+
+`visualise_persistence_counterexample` draws a failing persistence check as an ordered
+lasso: each path position is a separate node, blue nodes belong to the
+repeating cycle, and the final arrow returns to its first position. A
+successful result has no counterexample and raises `ValueError` if passed
+to this function. Since the witness records states rather than actions, an
+arrow lists every action connecting its two states.
+
+```python
+from mocha import TransitionSystem
+from mocha.algorithms.persistence import check_persistence
+from mocha.visualisation import visualise_persistence_counterexample
+
+system = TransitionSystem.from_components(
+    states={"idle", "busy"}, actions={"tick"},
+    transitions={("idle", "tick", "busy"), ("busy", "tick", "busy")},
+    initial_states={"idle"}, atomic_propositions={"stable"},
+    labels={"idle": {"stable"}, "busy": set()},
+)
+result = check_persistence(system, "stable")
+graph = visualise_persistence_counterexample(system, result)
+graph.render("persistence_result", format="svg", cleanup=True)
+```
+
+`to_lasso_graphviz(system, states, loop_start)` also accepts a lasso directly.
+Both functions accept formatting callbacks for complex states, actions, and
+propositions. 
 
 ## License
 

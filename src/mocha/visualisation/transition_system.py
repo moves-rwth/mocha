@@ -6,10 +6,20 @@ marker.  Highlighted states and transitions use a thicker outline; a current
 state receives a double outline.
 """
 
-from graphviz import Digraph
+from collections import defaultdict
+from collections.abc import Callable, Iterable, Sequence
+
+from graphviz import Digraph, escape
+
+from mocha.models.transition_system import (
+    Action,
+    AtomicProposition,
+    State,
+    Transition,
+    TransitionSystem,
+)
 
 from .overlay import TransitionSystemOverlay
-from mocha.models.transition_system import Transition,TransitionSystem
 
 
 def to_graphviz(
@@ -64,7 +74,10 @@ def to_graphviz(
         )
 
     graph = Digraph()
-    for state in sorted(ts.states):
+    node_ids = {
+        state: f"state_{index}" for index, state in enumerate(sorted(ts.states))
+    }
+    for state, node_id in node_ids.items():
         propositions = sorted(ts.labels(state))
 
         if propositions:
@@ -81,13 +94,11 @@ def to_graphviz(
             attributes["peripheries"] = "2"
 
         graph.node(
-            state,
-            label=state,
-            xlabel=f"{state_labels}",
+            node_id,
+            label=escape(state),
+            xlabel=escape(state_labels),
             **attributes,
         )
-
-    from collections import defaultdict
 
     edges: dict[tuple[str, str], set[str]] = defaultdict(set)
     highlighted_edges: dict[tuple[str, str], set[str]] = defaultdict(set)
@@ -108,23 +119,23 @@ def to_graphviz(
 
         if normal_actions:
             graph.edge(
-                source,
-                target,
-                label=", ".join(sorted(normal_actions)),
+                node_ids[source],
+                node_ids[target],
+                label=escape(", ".join(sorted(normal_actions))),
             )
 
         if highlighted_actions:
             graph.edge(
-                source,
-                target,
-                label=", ".join(sorted(highlighted_actions)),
+                node_ids[source],
+                node_ids[target],
+                label=escape(", ".join(sorted(highlighted_actions))),
                 penwidth="3",
             )
 
     for index, state in enumerate(sorted(ts.initial_states)):
         marker = f"__initial_{index}"
         graph.node(marker, label="", shape="none", width="0", height="0")
-        graph.edge(marker, state)
+        graph.edge(marker, node_ids[state])
 
     return graph
 
@@ -151,3 +162,89 @@ def visualise_step(
         highlighted_states=step.highlighted_states,
         highlighted_transitions=step.highlighted_transitions,
     )
+
+
+def to_lasso_graphviz(
+        ts: TransitionSystem[State, Action, AtomicProposition],
+        counterexample: Sequence[State],
+        loop_start: int,
+        *,
+        format_state: Callable[[State], str] = str,
+        format_action: Callable[[Action], str] = str,
+        format_proposition: Callable[[AtomicProposition], str] = str,
+) -> Digraph:
+    """Draw a transition-system lasso as a prefix and a repeating cycle.
+
+    ``counterexample`` ends by repeating the state at ``loop_start``. Each
+    preceding position gets its own node, even when the same system state
+    occurs more than once. The final edge returns to the loop-start node.
+    Edge labels list all actions that connect each pair of states, since a
+    state-only lasso does not select a particular action. Formatting callbacks
+    make non-string states, actions, and propositions readable. Their output is
+    displayed as literal text.
+
+    Raises:
+        ValueError: If the sequence is not a lasso-shaped run from an initial
+            state of ``ts``.
+    """
+    states = tuple(counterexample)
+    if len(states) < 2:
+        raise ValueError("A lasso must contain a state and its repeated endpoint")
+    if not isinstance(loop_start, int) or not 0 <= loop_start < len(states) - 1:
+        raise ValueError(
+            "loop_start must identify a position before the repeated endpoint"
+        )
+    if states[-1] != states[loop_start]:
+        raise ValueError("The last state must repeat the state at loop_start")
+    unknown = set(states) - ts.states
+    if unknown:
+        raise ValueError(f"Counterexample contains unknown states: {unknown!r}")
+    if states[0] not in ts.initial_states:
+        raise ValueError("The counterexample must start in an initial state")
+
+    actions_by_pair: dict[tuple[State, State], set[Action]] = defaultdict(set)
+    for transition in ts.transitions():
+        actions_by_pair[transition.source, transition.target].add(transition.action)
+    for source, target in zip(states, states[1:]):
+        if not actions_by_pair[source, target]:
+            raise ValueError(f"No transition connects {source!r} to {target!r}")
+
+    graph = Digraph()
+    graph.attr(rankdir="LR")
+    graph.node("__initial", label="", shape="none", width="0", height="0")
+    graph.edge("__initial", "step_0")
+
+    for index, state in enumerate(states[:-1]):
+        propositions = sorted(format_proposition(value) for value in ts.labels(state))
+        state_labels = f"{{{', '.join(propositions)}}}" if propositions else "∅"
+        attributes = (
+            {"style": "filled", "fillcolor": "#E8F0FE"}
+            if index >= loop_start else {}
+        )
+        if index == loop_start:
+            attributes["peripheries"] = "2"
+        graph.node(
+            f"step_{index}",
+            label=escape(f"{index}: {format_state(state)}"),
+            xlabel=escape(state_labels),
+            **attributes,
+        )
+
+    last_edge = len(states) - 2
+    for index, (source, target) in enumerate(zip(states, states[1:])):
+        actions = ", ".join(sorted(
+            format_action(value) for value in actions_by_pair[source, target]
+        ))
+        attributes = {"color": "#1F6FEB"} if index >= loop_start else {}
+        if index == last_edge:
+            attributes["penwidth"] = "2"
+            actions += " (repeat)"
+        target_index = loop_start if index == last_edge else index + 1
+        graph.edge(
+            f"step_{index}",
+            f"step_{target_index}",
+            label=escape(actions),
+            **attributes,
+        )
+
+    return graph
