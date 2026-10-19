@@ -1,5 +1,7 @@
 # Model Checking Assistant (MoChA)
 
+[![CI](https://github.com/moves-rwth/mocha/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/moves-rwth/mocha/actions/workflows/ci.yml)
+
 MoChA is a small, typed Python library for representing labelled transition
 systems and analysing them. 
 
