@@ -163,6 +163,95 @@ The automaton must declare its complete alphabet $2^{\mathrm{AP}}$, including
 valuations that no system state currently uses. This follows the formal product
 definition and makes a mismatched proposition vocabulary explicit.
 
+
+## LTL Formulas
+
+LTL formulas are immutable syntax trees defined in `mocha.logic.ltl`.
+Parse them with `mocha.io.parse_ltl`; normal forms and rewrite traces live in
+`mocha.algorithms.ltl_transformations`.
+
+Atomic proposition names require double quotes and use JSON string escaping.
+The unquoted constants `true` and `false` are Boolean values; `"true"` and
+`"false"` are proposition names. An optional vocabulary checks which names
+are allowed:
+
+```python
+from mocha.io import parse_ltl
+
+formula = parse_ltl(
+    'G("request" -> F "grant")',
+    atomic_propositions={"request", "grant"},
+)
+print(formula)  # □(request → ◇grant)
+source = formula.to_source()
+assert parse_ltl(source) == formula
+```
+
+Malformed syntax raises `LTLParseError` with a one-based line and column;
+names outside the supplied vocabulary raise `ValueError`.
+`str(formula)` uses textbook display notation and may omit proposition
+quotes. Use `formula.to_source()` for text that can be parsed again.
+
+Supported operators are `!` (not), `&`/`&&` (and), `|`/`||` (or), `->`
+(implication), `<->` (equivalence), `X` (next), `F` (eventually), `G`
+(always), `U` (until), `W` (weak until), and `R` (release). The parser also
+accepts `¬`, `∧`, `∨`, `→`, `↔`, `◯`/`○`, `◇`, and `□`.
+From strongest to weakest, precedence is unary operators, `U`/`W`/`R`,
+conjunction, disjunction, implication, then equivalence. Implication and the
+temporal operators `U`, `W`, and `R` are not associative: chaining them at the
+same precedence requires parentheses. Write `"p" -> ("q" -> "r")` or
+`("p" -> "q") -> "r"`; `"p" -> "q" -> "r"` is rejected. The same applies to
+mixed temporal chains: write `"p" U ("q" R "r")` or `("p" U "q") R "r"`.
+Conjunction, disjunction, and equivalence may be chained and are grouped to
+the left. Parentheses override precedence. Adjacent unary temporal operators
+are accepted: `GF"p"` means `G F "p"`.
+
+### Normal Forms
+
+`normalize_ltl` rewrites a formula using only conjunction, negation, next,
+and until, plus propositions and Boolean constants. Negation may still
+apply to a temporal formula in this form.
+
+`to_release_pnf` and `to_weak_until_pnf` instead produce positive normal
+forms, where negation applies only to propositions. Both allow conjunction,
+disjunction, next, and until; the former also allows release, and the latter
+weak until. Boolean constants remain allowed in both forms.
+
+```python
+from mocha.algorithms.ltl_transformations import (
+    normalize_ltl, to_release_pnf, to_weak_until_pnf,
+)
+
+print(normalize_ltl(parse_ltl('G"p"')))  # ¬(true U ¬p)
+negated_until = parse_ltl('!("p" U "q")')
+print(to_release_pnf(negated_until))     # ¬p R ¬q
+print(to_weak_until_pnf(negated_until))  # (p ∧ ¬q) W (¬p ∧ ¬q)
+```
+
+### Transformation Traces
+
+`trace_normalize_ltl`, `trace_release_pnf`, and `trace_weak_until_pnf`
+return an `AlgorithmTrace` with the transformed formula in `result` and
+immutable `LTLRewriteStep` snapshots in `steps`:
+
+```python
+from mocha.algorithms.ltl_transformations import trace_normalize_ltl
+
+trace = trace_normalize_ltl(formula)
+for step in trace.steps:
+    print(step.iteration, step.rule, step.formula)
+assert trace.result == normalize_ltl(formula)
+```
+
+The first step records the input formula. Each later step records one named
+rewrite, the whole formula after that rewrite, and the changed subformula
+in `before` and `after`. Its `path` identifies the location using `operand`,
+`left`, and `right`. The direct transformations also accept an `on_step`
+callback to stream the same snapshots.
+
+These transformations preserve the formula's meaning on infinite words.
+Parsing and transforming a formula do not check whether a transition system
+satisfies it.
 ## Visualisation
 
 With the `visualization` extra installed, `to_graphviz` returns a
