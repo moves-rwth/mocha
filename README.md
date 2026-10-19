@@ -3,7 +3,9 @@
 [![CI](https://github.com/moves-rwth/mocha/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/moves-rwth/mocha/actions/workflows/ci.yml)
 
 MoChA is a small, typed Python library for representing labelled transition
-systems and analysing them. 
+systems and automata, checking reachability, invariants, and persistence, and
+parsing and transforming LTL formulas. Algorithm traces expose intermediate
+steps for teaching and worked examples.
 
 The public API is available from `mocha`: models, analysis results and traces,
 algorithms, and parsing and JSON helpers. These names are also exported from
@@ -26,7 +28,8 @@ python -m pip install '.[visualization]'
 ```
 
 Rendering an image also requires the [Graphviz](https://graphviz.org/)
-executables to be installed and available on your `PATH`.
+executables, including `dot`, to be installed and available on your `PATH`.
+Core models, algorithms, and JSON helpers work without Graphviz.
 
 ## Transition Systems
 
@@ -49,7 +52,7 @@ constructor validates that transition endpoints, actions, initial states, and
 labels were declared.
 
 ```python
-from mocha.models import TransitionSystem
+from mocha import TransitionSystem
 
 system = TransitionSystem.from_components(
     states={"idle", "running", "done"},
@@ -75,6 +78,58 @@ immutable snapshots. Query successors with `post(state, action=None)`,
 predecessors with `pre(state, action=None)`, and iterate the relation with
 `transitions()`.
 
+## Reachability and Invariants
+
+`compute_reachable_states` finds all states reachable from any initial state,
+including the initial states themselves. `check_invariant` checks whether
+every reachable state belongs to a supplied set of allowed states. A failing
+result contains a path from an initial state to a violating state:
+
+```python
+from mocha import check_invariant, compute_reachable_states, trace_reachability
+
+reachable = compute_reachable_states(system)
+assert reachable.reachable_states == {"idle", "running", "done"}
+
+result = check_invariant(system, {"idle", "running"})
+assert not result.satisfies
+assert result.counterexample == ("idle", "running", "done")
+
+trace = trace_reachability(system)
+assert trace.result == reachable
+for step in trace.steps:
+    print(step.iteration, step.reachable_states)
+```
+
+`trace_reachability`, `trace_invariant`, and `trace_persistence` return an
+`AlgorithmTrace` with the final `result` and an immutable tuple of `steps`.
+The direct algorithms also accept an `on_step` callback to stream snapshots.
+Their result and step types are exported from `mocha` and `mocha.algorithms`.
+
+## JSON Import and Export
+
+String-valued transition systems can be saved as versioned JSON documents:
+
+```python
+from mocha import (
+    from_dict, load_transition_system, save_transition_system, to_dict,
+)
+
+document = to_dict(system)
+restored = from_dict(document)
+assert to_dict(restored) == document
+
+save_transition_system(system, "system.json")
+restored = load_transition_system("system.json")
+```
+
+`to_dict` produces deterministic ordering. `from_dict` and
+`load_transition_system` validate both the JSON Schema and the model's
+cross-references. Invalid document structure raises
+`jsonschema.ValidationError`; invalid component references raise `ValueError`.
+`validate_dict` checks only the schema. Saving replaces an existing file at
+the supplied path.
+
 ## Automata
 
 MoChA represents the common automaton structure
@@ -97,7 +152,7 @@ alphabet symbol, independently of `is_deterministic`. With no states or no
 alphabet symbols, the automaton is complete because there are no pairs to check.
 
 ```python
-from mocha.models import FiniteAutomaton
+from mocha import FiniteAutomaton
 
 automaton = FiniteAutomaton.from_components(
     states={"even", "odd"},
@@ -138,7 +193,7 @@ is accepting when it visits every $F \in \mathcal{F}$ infinitely often. The
 model stores this family as `accepting_sets`:
 
 ```python
-from mocha.models import GNBA
+from mocha import GNBA
 
 automaton = GNBA.from_components(
     states={"start", "request_seen", "grant_seen"},
@@ -192,7 +247,7 @@ definition and makes a mismatched proposition vocabulary explicit.
 
 LTL formulas are immutable syntax trees defined in `mocha.logic.ltl`.
 Parse them with `mocha.io.parse_ltl`; normal forms and rewrite traces live in
-`mocha.algorithms.ltl_transformations`.
+`mocha.algorithms`. These helpers are also available directly from `mocha`.
 
 Atomic proposition names require double quotes and use JSON string escaping.
 The unquoted constants `true` and `false` are Boolean values; `"true"` and
@@ -200,7 +255,7 @@ The unquoted constants `true` and `false` are Boolean values; `"true"` and
 are allowed:
 
 ```python
-from mocha.io import parse_ltl
+from mocha import parse_ltl
 
 formula = parse_ltl(
     'G("request" -> F "grant")',
@@ -242,7 +297,7 @@ disjunction, next, and until; the former also allows release, and the latter
 weak until. Boolean constants remain allowed in both forms.
 
 ```python
-from mocha.algorithms.ltl_transformations import (
+from mocha.algorithms import (
     normalize_ltl, to_release_pnf, to_weak_until_pnf,
 )
 
@@ -259,7 +314,7 @@ return an `AlgorithmTrace` with the transformed formula in `result` and
 immutable `LTLRewriteStep` snapshots in `steps`:
 
 ```python
-from mocha.algorithms.ltl_transformations import trace_normalize_ltl
+from mocha.algorithms import trace_normalize_ltl
 
 trace = trace_normalize_ltl(formula)
 for step in trace.steps:
@@ -276,6 +331,7 @@ callback to stream the same snapshots.
 These transformations preserve the formula's meaning on infinite words.
 Parsing and transforming a formula do not check whether a transition system
 satisfies it.
+
 ## Visualisation
 
 With the `visualization` extra installed, `to_graphviz` returns a
@@ -291,20 +347,51 @@ graph = to_graphviz(system, highlighted_states={"running"})
 graph.render("system", format="svg", cleanup=True)
 ```
 
+`to_graphviz` and the analysis-step renderers currently accept string-valued
+states, actions, and propositions. State labels are displayed as literal
+text. Actions connecting the same pair of states share an edge label, with
+highlighted actions drawn on a separate edge.
+
+The returned graph supports several output workflows:
+
+```python
+graph.save("system.dot")                          # Graphviz DOT source
+graph.render("system", format="png", cleanup=True)  # PNG image
+svg_bytes = graph.pipe(format="svg")              # SVG bytes in memory
+```
+
+In a Jupyter notebook, use `display(graph)` to show the graph inline.
+Building the graph or saving DOT source requires the Python `graphviz`
+package; rendering an image also needs the Graphviz executables.
+
 `visualise_step`, `visualise_reachability_step`, `visualise_invariant_step`,
 and `visualise_invariant_result` turn analysis snapshots and results into the
 same kind of graph.
 
+```python
+from mocha.visualisation import visualise_reachability_step
+
+graph = visualise_reachability_step(system, trace_reachability(system).steps[0])
+```
+
+### Persistence Counterexamples
+
+`check_persistence(system, proposition)` checks whether every infinite run
+eventually stays in states labelled with the proposition (`◇□proposition`).
+The proposition must be declared, and every state must have an outgoing
+transition, including unreachable states. Violations of these preconditions
+raise `ValueError`.
+
 `visualise_persistence_counterexample` draws a failing persistence check as an ordered
-lasso: each path position is a separate node, blue nodes belong to the
-repeating cycle, and the final arrow returns to its first position. A
+lasso: each path position is a separate node, shaded nodes belong to the
+repeating cycle, blue arrows mark the cycle, and the final arrow returns to
+its first position. A
 successful result has no counterexample and raises `ValueError` if passed
 to this function. Since the witness records states rather than actions, an
 arrow lists every action connecting its two states.
 
 ```python
-from mocha import TransitionSystem
-from mocha.algorithms.persistence import check_persistence
+from mocha import TransitionSystem, check_persistence
 from mocha.visualisation import visualise_persistence_counterexample
 
 system = TransitionSystem.from_components(
@@ -321,6 +408,17 @@ graph.render("persistence_result", format="svg", cleanup=True)
 `to_lasso_graphviz(system, states, loop_start)` also accepts a lasso directly.
 Both functions accept formatting callbacks for complex states, actions, and
 propositions.
+
+```python
+from mocha.visualisation import to_lasso_graphviz
+
+graph = to_lasso_graphviz(system, ("idle", "busy", "busy"), loop_start=1)
+```
+
+The final state must repeat the state at `loop_start`; the sequence must
+start in an initial state and follow existing transitions. Unlike
+`to_graphviz`, the lasso renderer also supports non-string model values
+through `format_state`, `format_action`, and `format_proposition` callbacks.
 
 ## Development
 
