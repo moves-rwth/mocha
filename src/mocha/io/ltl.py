@@ -61,6 +61,7 @@ _BINARY = {
     "W": (5, WeakUntil),
     "R": (5, Release),
 }
+_NON_ASSOCIATIVE = {"->", "U", "W", "R"}
 _OPERATOR_ALIASES = {
     "&&": "&", "||": "|", "¬": "!", "∧": "&", "∨": "|",
     "→": "->", "↔": "<->", "○": "X", "◯": "X", "□": "G", "◇": "F",
@@ -137,6 +138,7 @@ class _Parser:
         else:
             raise LTLParseError(self.source, token.position, "Expected a formula")
 
+        previous_precedence: int | None = None
         while (
             self.current.kind in {"keyword", "operator"}
             and self.current.value in _BINARY
@@ -144,12 +146,15 @@ class _Parser:
             precedence, constructor = _BINARY[self.current.value]
             if precedence < minimum_precedence:
                 break
-            operator = self.advance()
-            next_minimum = (
-                precedence if operator.value in {"->", "U", "W", "R"}
-                else precedence + 1
-            )
-            left = constructor(left, self.expression(next_minimum))
+            if precedence == previous_precedence and self.current.value in _NON_ASSOCIATIVE:
+                operators = "implications" if self.current.value == "->" else "U, W, or R"
+                raise LTLParseError(
+                    self.source, self.current.position,
+                    f"Parentheses are required when chaining {operators}",
+                )
+            self.advance()
+            left = constructor(left, self.expression(precedence + 1))
+            previous_precedence = precedence
         return left
 
     def parse(self) -> LTLFormula:
@@ -172,6 +177,9 @@ def parse_ltl(
     All proposition names require double quotes, including single letters.
     Runs consisting only of ``X``, ``F``, and ``G`` are unary operator chains
     (``XX"p"``, ``GF("p")``). Boolean constants remain unquoted.
+    Chained implications and combinations of ``U``, ``W``, and ``R`` require
+    explicit parentheses. Boolean conjunction, disjunction, and equivalence
+    may be chained without parentheses and are grouped to the left.
     Use ``formula.to_source()`` for serialization; ``str(formula)`` is display notation.
     Syntax errors raise :class:`LTLParseError` with a line and column;
     undeclared propositions raise ``ValueError``.

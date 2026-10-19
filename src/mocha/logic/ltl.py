@@ -1,8 +1,9 @@
 """Immutable LTL syntax trees and formatting.
 
 Precedence, from strongest to weakest: ``! X F G``, ``U W R``, ``&``, ``|``,
-``->``, ``<->``. Unary operators, ``U``, ``W``, ``R``, and ``->`` associate to the
-right. Parentheses override precedence. Both ASCII and textbook Unicode
+``->``, ``<->``. Chained implications and combinations of ``U``, ``W``, and
+``R`` require explicit parentheses. The other binary operators associate to
+the left. Parentheses override precedence. Both ASCII and textbook Unicode
 operator spellings are accepted; string output uses the latter.
 Propositions must be double-quoted. ASCII unary temporal operators may be
 adjacent, as in ``XX"p"`` or ``GF("p")``.
@@ -129,10 +130,10 @@ def _format_formula(
         if isinstance(formula, node_type):
             result = symbol + _format_formula(formula.operand, 6, quote_propositions=quote_propositions)
             return f"({result})" if 6 < minimum_precedence else result
-    for node_type, (precedence, symbol, right_associative) in _BINARY_PRINT.items():
+    for node_type, (precedence, symbol, non_associative) in _BINARY_PRINT.items():
         if isinstance(formula, node_type):
-            left_minimum = precedence + 1 if right_associative else precedence
-            right_minimum = precedence if right_associative else precedence + 1
+            left_minimum = precedence + 1 if non_associative else precedence
+            right_minimum = precedence + 1
             left = _format_formula(formula.left, left_minimum, quote_propositions=quote_propositions)
             right = _format_formula(formula.right, right_minimum, quote_propositions=quote_propositions)
             result = f"{left} {symbol} {right}"

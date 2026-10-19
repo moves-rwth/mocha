@@ -76,20 +76,71 @@ class LTLParserTests(unittest.TestCase):
             ),
         )
 
-    def test_associativity_and_quoted_reserved_names(self) -> None:
+    def test_parenthesized_operators_and_quoted_reserved_names(self) -> None:
         self.assertEqual(
-            parse_ltl('"p" -> "q" -> "G"'),
+            parse_ltl('"p" -> ("q" -> "G")'),
             Implies(Proposition("p"), Implies(Proposition("q"), Proposition("G"))),
         )
         self.assertEqual(
-            parse_ltl('"p" U "q" R "r"'),
+            parse_ltl('"p" U ("q" R "r")'),
             Until(Proposition("p"), Release(Proposition("q"), Proposition("r"))),
         )
         self.assertEqual(
-            parse_ltl('"p" W "q" U "r"'),
+            parse_ltl('"p" W ("q" U "r")'),
             WeakUntil(Proposition("p"), Until(Proposition("q"), Proposition("r"))),
         )
         self.assertEqual(parse_ltl('"a\\\"b"'), Proposition('a"b'))
+
+    def test_non_associative_chains_require_parentheses(self) -> None:
+        operators = [*product(("U", "W", "R"), repeat=2),
+                     *product(("->", "→"), repeat=2)]
+        for first, second in operators:
+            source = f'"p" {first} "q" {second} "r"'
+            for wrapped in (source, f'({source})', f'G({source})'):
+                with self.subTest(source=wrapped):
+                    with self.assertRaisesRegex(LTLParseError, "Parentheses") as error:
+                        parse_ltl(wrapped)
+                    self.assertEqual(error.exception.position, wrapped.rindex(second))
+
+        with self.assertRaisesRegex(LTLParseError, "Parentheses") as error:
+            parse_ltl('"p" U\n"q" R "r"')
+        self.assertEqual((error.exception.line, error.exception.column), (2, 5))
+
+    def test_both_parenthesized_groupings_are_accepted(self) -> None:
+        p, q, r = map(Proposition, ("p", "q", "r"))
+        temporal = (("U", Until), ("W", WeakUntil), ("R", Release))
+        pairs = [*product(temporal, repeat=2),
+                 *product((("->", Implies), ("→", Implies)), repeat=2)]
+        for (first, first_type), (second, second_type) in pairs:
+            with self.subTest(first=first, second=second):
+                self.assertEqual(
+                    parse_ltl(f'("p" {first} "q") {second} "r"'),
+                    second_type(first_type(p, q), r),
+                )
+                self.assertEqual(
+                    parse_ltl(f'"p" {first} ("q" {second} "r")'),
+                    first_type(p, second_type(q, r)),
+                )
+
+    def test_associative_boolean_chains_and_precedence_remain_supported(self) -> None:
+        p, q, r, s = map(Proposition, ("p", "q", "r", "s"))
+        for operator, constructor in (("&", And), ("&&", And), ("|", Or),
+                                      ("||", Or), ("<->", Equiv), ("↔", Equiv)):
+            with self.subTest(operator=operator):
+                self.assertEqual(
+                    parse_ltl(f'"p" {operator} "q" {operator} "r"'),
+                    constructor(constructor(p, q), r),
+                )
+        self.assertEqual(
+            parse_ltl('"p" U "q" -> "r" R "s"'),
+            Implies(Until(p, q), Release(r, s)),
+        )
+        self.assertEqual(
+            parse_ltl('"p" U "q" & "r" W "s"'),
+            And(Until(p, q), WeakUntil(r, s)),
+        )
+        with self.assertRaisesRegex(LTLParseError, "Parentheses"):
+            parse_ltl('"p" -> "q" & "r" -> "s"')
 
     def test_validates_against_transition_system_vocabulary(self) -> None:
         system = TransitionSystem.from_components(
@@ -163,6 +214,25 @@ class LTLFormattingTests(unittest.TestCase):
         )
         self.assertEqual(parse_ltl('○"p" ↔ ¬"q" ∨ "r"'),
                          parse_ltl('X "p" <-> !"q" | "r"'))
+
+    def test_non_associative_nesting_is_formatted_with_parentheses(self) -> None:
+        temporal = (("U", Until), ("W", WeakUntil), ("R", Release))
+        pairs = [*product(temporal, repeat=2), (("→", Implies), ("→", Implies))]
+        p, q, r = map(Proposition, ("p", "q", "r"))
+        for (first, first_type), (second, second_type) in pairs:
+            cases = (
+                (second_type(first_type(p, q), r),
+                 f'("p" {first} "q") {second} "r"',
+                 f'(p {first} q) {second} r'),
+                (first_type(p, second_type(q, r)),
+                 f'"p" {first} ("q" {second} "r")',
+                 f'p {first} (q {second} r)'),
+            )
+            for formula, source, display in cases:
+                with self.subTest(source=source):
+                    self.assertEqual(formula.to_source(), source)
+                    self.assertEqual(str(formula), display)
+                    self.assertEqual(parse_ltl(source), formula)
 
 
 def _evaluate(formula, word, loop_start, position):
