@@ -21,7 +21,7 @@ updates:
       day: monday
       time: "09:00"
       timezone: Europe/Berlin
-    versioning-strategy: widen
+    versioning-strategy: increase-if-necessary
     open-pull-requests-limit: 3
     groups:
       python-minor-and-patch:
