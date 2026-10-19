@@ -73,7 +73,7 @@ predecessors with `pre(state, action=None)`, and iterate the relation with
 ## License
 
 MoChA is licensed under the Mozilla Public License 2.0. See
-[LICENSE](LICENSE) for the full license text.
+[LICENCE](LICENCE) for the full license text.
 
 ## Funding
 
