@@ -29,6 +29,15 @@ Draft202012Validator.check_schema(_SCHEMA)
 _VALIDATOR = Draft202012Validator(_SCHEMA)
 
 
+__all__ = [
+    "from_dict",
+    "load_transition_system",
+    "save_transition_system",
+    "to_dict",
+    "validate_dict",
+]
+
+
 def validate_dict(data: object) -> None:
     """Validate a decoded JSON document against the schema.
 

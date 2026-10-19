@@ -6,6 +6,8 @@ from typing import Generic, TypeVar
 Result = TypeVar("Result")
 Step = TypeVar("Step")
 
+__all__ = ["AlgorithmTrace"]
+
 
 @dataclass(frozen=True)
 class AlgorithmTrace(Generic[Result, Step]):

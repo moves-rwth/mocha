@@ -7,6 +7,8 @@ from mocha.models.transition_system import TransitionSystem
 
 from .transition_system import to_graphviz
 
+__all__ = ["visualise_reachability_step"]
+
 
 def visualise_reachability_step(
         ts: TransitionSystem[str, str, str],
