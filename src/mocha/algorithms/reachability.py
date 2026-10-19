@@ -11,6 +11,13 @@ from mocha.models.transition_system import (
     TransitionSystem,
 )
 
+__all__ = [
+    "ReachabilityResult",
+    "ReachabilityStep",
+    "compute_reachable_states",
+    "trace_reachability",
+]
+
 
 @dataclass(frozen=True)
 class ReachabilityResult(Generic[State]):

@@ -11,6 +11,13 @@ from mocha.models.transition_system import (
     TransitionSystem,
 )
 
+__all__ = [
+    "InvariantResult",
+    "InvariantStep",
+    "check_invariant",
+    "trace_invariant",
+]
+
 
 @dataclass(frozen=True)
 class InvariantResult(Generic[State]):

@@ -8,13 +8,23 @@ def main() -> None:
     assert find_spec("graphviz") is None, "The base installation includes graphviz"
 
     import mocha
-    from mocha.algorithms.invariance import check_invariant
-    from mocha.algorithms.persistence import check_persistence
-    from mocha.algorithms.reachability import compute_reachable_states
+    from mocha.algorithms import (
+        check_invariant,
+        check_persistence,
+        compute_reachable_states,
+    )
     from mocha.io import from_dict, to_dict
 
     # Importing the namespace should leave rendering dependencies optional.
     import_module("mocha.visualisation")
+
+    # Every advertised core export must work without the optional dependency.
+    for module_name in (
+        "mocha", "mocha.algorithms", "mocha.io", "mocha.models", "mocha.logic",
+    ):
+        module = import_module(module_name)
+        for name in module.__all__:
+            getattr(module, name)
 
     system = mocha.TransitionSystem.from_components(
         states={"start", "stable", "unreachable"},

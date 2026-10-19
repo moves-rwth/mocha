@@ -4,6 +4,13 @@
 
 MoChA is a small, typed Python library for representing labelled transition
 systems and analysing them. 
+
+The public API is available from `mocha`: models, analysis results and traces,
+algorithms, and parsing and JSON helpers. These names are also exported from
+`mocha.models`, `mocha.algorithms`, and `mocha.io`. LTL formula constructors
+live in `mocha.logic.ltl` (also available as `mocha.ltl`), and rendering helpers
+are exported from `mocha.visualisation` with the optional `visualization` extra.
+
 ## Transition Systems
 
 A labelled transition system is defined as

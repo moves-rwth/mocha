@@ -21,6 +21,8 @@ from mocha.models.transition_system import (
 
 from .overlay import TransitionSystemOverlay
 
+__all__ = ["to_graphviz", "to_lasso_graphviz", "visualise_step"]
+
 
 def to_graphviz(
         ts: TransitionSystem[str, str, str],

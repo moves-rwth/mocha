@@ -6,6 +6,8 @@ from mocha.algorithms.invariance import InvariantStep, InvariantResult
 from mocha.models.transition_system import TransitionSystem
 from mocha.visualisation.transition_system import to_graphviz
 
+__all__ = ["visualise_invariant_result", "visualise_invariant_step"]
+
 
 def visualise_invariant_step(
         ts: TransitionSystem[str, str, str],
