@@ -77,6 +77,10 @@ from .algorithms import (
     check_ltl_validity,
     trace_ltl_satisfiability,
     trace_ltl_validity,
+    LTLModelCheckingResult,
+    LTLModelCheckingStep,
+    check_ltl,
+    trace_check_ltl,
 )
 
 from .logic import ltl
@@ -184,6 +188,10 @@ __all__ = [
     "check_ltl_validity",
     "trace_ltl_satisfiability",
     "trace_ltl_validity",
+    "LTLModelCheckingResult",
+    "LTLModelCheckingStep",
+    "check_ltl",
+    "trace_check_ltl",
     "transition_system_automaton_product",
     "validate_dict",
 ]

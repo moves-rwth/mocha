@@ -75,6 +75,13 @@ from .ltl_satisfiability_validity import (
     trace_ltl_satisfiability,
     trace_ltl_validity,
 )
+from .ltl_model_checking import (
+    LTLModelCheckingResult,
+    LTLModelCheckingStep,
+    check_ltl,
+    trace_check_ltl,
+)
+
 from .trace import AlgorithmTrace
 
 __all__ = [
@@ -142,5 +149,9 @@ __all__ = [
     "check_ltl_validity",
     "trace_ltl_satisfiability",
     "trace_ltl_validity",
+    "LTLModelCheckingResult",
+    "LTLModelCheckingStep",
+    "check_ltl",
+    "trace_check_ltl",
     "transition_system_automaton_product",
 ]
