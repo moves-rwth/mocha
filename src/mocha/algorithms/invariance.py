@@ -82,11 +82,12 @@ def check_invariant(
         )
 
     visited: set[State] = set()
-    to_explore: list[State] = list(ts.initial_states)
+    initial_states = ts.initial_states
+    to_explore: list[State] = list(initial_states)
 
-    predecessor: dict[State, State | None] = {
-        state: None
-        for state in ts.initial_states
+    predecessor: dict[State, State] = {
+        state: state
+        for state in initial_states
     }
 
     while to_explore:
@@ -109,12 +110,12 @@ def check_invariant(
                 )
 
         if not satisfies:
-            path: list[State] = []
-            current: State | None = state
+            path: list[State] = [state]
+            current = state
 
-            while current is not None:
-                path.append(current)
+            while current not in initial_states:
                 current = predecessor[current]
+                path.append(current)
 
             path.reverse()
 
