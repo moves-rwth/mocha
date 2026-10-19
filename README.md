@@ -135,7 +135,15 @@ automaton = GNBA.from_components(
 )
 ```
 
-With an empty acceptance ; it converts a GNBA into an equivalent NBA while
+With an empty acceptance family $\mathcal{F}=\varnothing$, every infinite run
+satisfies the acceptance condition. If the family contains the empty set,
+no run is accepting. An accepted word must have an infinite run from an
+initial state in either case.
+
+`NondeterministicBuchiAutomaton` is provided as a descriptive alias for `NBA`.
+`GeneralizedNondeterministicBuchiAutomaton` is the corresponding alias for
+`GNBA`. The standard round-robin construction is available as
+`mocha.algorithms.gnba_to_nba`; it converts a GNBA into an equivalent NBA while
 preserving the represented infinite-word language.
 
 ## Transition-System–Automaton Products
@@ -154,15 +162,7 @@ automaton's acceptance condition.
 The automaton must declare its complete alphabet $2^{\mathrm{AP}}$, including
 valuations that no system state currently uses. This follows the formal product
 definition and makes a mismatched proposition vocabulary explicit.
-family $\mathcal{F}=\varnothing$, every infinite run
-satisfies the acceptance condition. If the family contains the empty set,
-no run is accepting. An accepted word must have an infinite run from an
-initial state in either case.
 
-`NondeterministicBuchiAutomaton` is provided as a descriptive alias for `NBA`.
-`GeneralizedNondeterministicBuchiAutomaton` is the corresponding alias for
-`GNBA`. The standard round-robin construction is available as
-`mocha.algorithms.gnba_to_nba`
 
 ## License
 
