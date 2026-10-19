@@ -222,6 +222,39 @@ class FiniteAutomatonTests(unittest.TestCase):
         self.assertFalse(automaton.accepts(("a",)))
         self.assertFalse(automaton.accepts(("c",)))
 
+    def test_rejects_registered_symbols_with_missing_transitions(self) -> None:
+        automaton = FiniteAutomaton.from_components(
+            states={"q0"},
+            alphabet={"a", "b"},
+            transitions={("q0", "a", "q0")},
+            initial_states={"q0"},
+            accepting_states={"q0"},
+        )
+
+        self.assertTrue(automaton.accepts(("a",)))
+        for word in (("b",), ("a", "b")):
+            with self.subTest(word=word):
+                self.assertFalse(automaton.accepts(word))
+
+    def test_removing_last_accepting_state_clears_acceptance_and_transitions(self) -> None:
+        automaton = FiniteAutomaton.from_components(
+            states={"q0", "q1"},
+            alphabet={"a"},
+            transitions={("q0", "a", "q1"), ("q1", "a", "q1")},
+            initial_states={"q0"},
+            accepting_states={"q1"},
+        )
+        self.assertTrue(automaton.accepts(("a",)))
+
+        automaton.remove_state("q1")
+
+        self.assertEqual(automaton.states, frozenset({"q0"}))
+        self.assertEqual(automaton.accepting_states, frozenset())
+        self.assertEqual(set(automaton.transitions()), set())
+        for word in ((), ("a",), ("a", "a")):
+            with self.subTest(word=word):
+                self.assertFalse(automaton.accepts(word))
+
     def test_empty_word_is_accepted_when_an_initial_state_is_accepting(self) -> None:
         automaton = FiniteAutomaton.from_components(
             states={"q0"},

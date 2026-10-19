@@ -48,14 +48,33 @@ class GnbaToNbaTests(unittest.TestCase):
         gnba = GNBA.from_components(
             states={"q0", "q1"},
             alphabet={"a"},
-            transitions={("q0", "a", "q1")},
+            transitions={("q0", "a", "q1"), ("q1", "a", "q1")},
             initial_states={"q0"},
         )
 
         nba = gnba_to_nba(gnba)
 
+        self.assertEqual(gnba.accepting_sets, frozenset())
         self.assertEqual(nba.accepting_states, frozenset({("q0", 1), ("q1", 1)}))
         self.assertTrue(nba.has_transition(("q0", 1), "a", ("q1", 1)))
+        self.assertTrue(nba.has_transition(("q1", 1), "a", ("q1", 1)))
+
+    def test_empty_acceptance_set_becomes_an_nba_without_accepting_states(self) -> None:
+        gnba = GNBA.from_components(
+            states={"q0", "q1"},
+            alphabet={"a"},
+            transitions={("q0", "a", "q1"), ("q1", "a", "q1")},
+            initial_states={"q0"},
+            accepting_sets=(set(),),
+        )
+
+        nba = gnba_to_nba(gnba)
+
+        self.assertEqual(gnba.accepting_sets, frozenset({frozenset()}))
+        self.assertEqual(nba.accepting_states, frozenset())
+        self.assertEqual(nba.initial_states, frozenset({("q0", 1)}))
+        self.assertTrue(nba.has_transition(("q0", 1), "a", ("q1", 1)))
+        self.assertTrue(nba.has_transition(("q1", 1), "a", ("q1", 1)))
 
 
 class TransitionSystemAutomatonProductTests(unittest.TestCase):
@@ -149,6 +168,60 @@ class TransitionSystemAutomatonProductTests(unittest.TestCase):
             ),
             frozenset({("s0", "q1"), ("s1", "q1")}),
         )
+
+    def test_preserves_nondeterministic_initial_choices(self) -> None:
+        self.system.add_state("s2", initial=True, labels={"p"})
+        self.system.add_transition("s2", "a", "s1")
+
+        for automaton_type in (FiniteAutomaton, NBA):
+            with self.subTest(automaton_type=automaton_type):
+                automaton = automaton_type.from_components(
+                    states={"i0", "i1", "left", "shared", "right"},
+                    alphabet=self.alphabet,
+                    transitions={
+                        ("i0", frozenset({"p"}), "left"),
+                        ("i0", frozenset({"p"}), "shared"),
+                        ("i1", frozenset({"p"}), "shared"),
+                        ("i1", frozenset({"p"}), "right"),
+                        ("left", frozenset({"q"}), "left"),
+                        ("shared", frozenset({"q"}), "shared"),
+                        ("right", frozenset({"q"}), "right"),
+                    },
+                    initial_states={"i0", "i1"},
+                )
+
+                product = transition_system_automaton_product(self.system, automaton)
+
+                self.assertEqual(product.initial_states, frozenset({
+                    ("s0", "left"), ("s0", "shared"), ("s0", "right"),
+                    ("s2", "left"), ("s2", "shared"), ("s2", "right"),
+                }))
+                for source in ("s0", "s2"):
+                    for choice in ("left", "shared", "right"):
+                        self.assertTrue(product.has_transition(
+                            (source, choice), "a", ("s1", choice),
+                        ))
+
+    def test_unmatched_initial_label_produces_no_initial_product_states(self) -> None:
+        for automaton_type in (FiniteAutomaton, NBA):
+            with self.subTest(automaton_type=automaton_type):
+                automaton = automaton_type.from_components(
+                    states={"q0", "q1"},
+                    alphabet=self.alphabet,
+                    transitions={
+                        ("q0", frozenset({"q"}), "q1"),
+                        ("q1", frozenset({"p"}), "q1"),
+                    },
+                    initial_states={"q0"},
+                )
+
+                product = transition_system_automaton_product(self.system, automaton)
+
+                self.assertEqual(product.initial_states, frozenset())
+                self.assertEqual(len(product.states), 4)
+                self.assertTrue(product.has_transition(
+                    ("s0", "q0"), "a", ("s1", "q1"),
+                ))
 
     def test_rejects_an_automaton_with_a_non_valuation_alphabet(self) -> None:
         automaton = FiniteAutomaton.from_components(
