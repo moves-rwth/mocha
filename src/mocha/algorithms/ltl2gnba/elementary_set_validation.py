@@ -4,7 +4,9 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Literal
 
-from mocha.logic.ltl import And, BooleanConstant, LTLFormula, Next, Not, Until
+from mocha.logic.ltl import (
+    And, BooleanConstant, LTLFormula, Next, Not, Until, complement,
+)
 
 from ..ltl_transformations import normalize_ltl
 
@@ -37,18 +39,10 @@ class ElementarySetResult:
         return not self.violations
 
 
-def _complement(formula: LTLFormula) -> LTLFormula:
-    if isinstance(formula, Not):
-        return formula.operand
-    if isinstance(formula, BooleanConstant):
-        return BooleanConstant(not formula.value)
-    return Not(formula)
-
-
 def _representative(formula: LTLFormula) -> LTLFormula:
     """Identify double negation and negated constants within core syntax."""
     if isinstance(formula, Not):
-        return _complement(_representative(formula.operand))
+        return complement(_representative(formula.operand))
     if isinstance(formula, Next):
         return Next(_representative(formula.operand))
     if isinstance(formula, (And, Until)):
@@ -70,7 +64,7 @@ def _closure(formula: LTLFormula) -> frozenset[LTLFormula]:
             visit(node.right)
 
     visit(formula)
-    return frozenset(subformulas | {_complement(node) for node in subformulas})
+    return frozenset(subformulas | {complement(node) for node in subformulas})
 
 
 def check_elementary_set(
@@ -118,16 +112,16 @@ def check_elementary_set(
 
     pairs_seen: set[frozenset[LTLFormula]] = set()
     for item in sorted(closure, key=str):
-        complement = _complement(item)
-        pair = frozenset((item, complement))
+        opposite = complement(item)
+        pair = frozenset((item, opposite))
         if pair not in pairs_seen:
             pairs_seen.add(pair)
-            if item in members and complement in members:
-                report("propositional_consistency", "contradiction", (item, complement),
-                       f"Both {item} and its complement {complement} are included.")
-            elif item not in members and complement not in members:
-                report("maximality", "missing_choice", (item, complement),
-                       f"Neither {item} nor its complement {complement} is included; include one.")
+            if item in members and opposite in members:
+                report("propositional_consistency", "contradiction", (item, opposite),
+                       f"Both {item} and its complement {opposite} are included.")
+            elif item not in members and opposite not in members:
+                report("maximality", "missing_choice", (item, opposite),
+                       f"Neither {item} nor its complement {opposite} is included; include one.")
 
         if isinstance(item, BooleanConstant) and item.value and item not in members:
             report("propositional_consistency", "true_required", (item,),

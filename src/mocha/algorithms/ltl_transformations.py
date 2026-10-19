@@ -11,6 +11,7 @@ from typing import Literal
 from mocha.logic.ltl import (
     Always, And, BooleanConstant, Equiv, Eventually, Implies,
     LTLFormula, Next, Not, Or, Proposition, Release, Until, WeakUntil,
+    complement,
 )
 
 from .trace import AlgorithmTrace
@@ -45,9 +46,9 @@ def _local_rewrite(
     if isinstance(formula, Not):
         operand = formula.operand
         if isinstance(operand, BooleanConstant):
-            return "negate_constant", BooleanConstant(not operand.value)
+            return "negate_constant", complement(operand)
         if isinstance(operand, Not):
-            return "double_negation", operand.operand
+            return "double_negation", complement(operand)
         if mode != "core":
             if isinstance(operand, And):
                 return "de_morgan_and", Or(Not(operand.left), Not(operand.right))
