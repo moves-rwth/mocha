@@ -69,6 +69,14 @@ from .algorithms import (
     validate_elementary_set_collection,
     enumerate_elementary_sets,
     trace_elementary_sets,
+    LTLSatisfiabilityResult,
+    LTLSatisfiabilityStep,
+    LTLValidityResult,
+    LTLValidityStep,
+    check_ltl_satisfiability,
+    check_ltl_validity,
+    trace_ltl_satisfiability,
+    trace_ltl_validity,
 )
 
 from .logic import ltl
@@ -168,6 +176,14 @@ __all__ = [
     "validate_elementary_set_collection",
     "enumerate_elementary_sets",
     "trace_elementary_sets",
+    "LTLSatisfiabilityResult",
+    "LTLSatisfiabilityStep",
+    "LTLValidityResult",
+    "LTLValidityStep",
+    "check_ltl_satisfiability",
+    "check_ltl_validity",
+    "trace_ltl_satisfiability",
+    "trace_ltl_validity",
     "transition_system_automaton_product",
     "validate_dict",
 ]
