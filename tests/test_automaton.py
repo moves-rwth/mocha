@@ -71,6 +71,69 @@ class AutomatonTests(unittest.TestCase):
         self.automaton.set_initial("q2")
         self.assertFalse(self.automaton.is_deterministic)
 
+    def test_is_complete_with_no_state_symbol_pairs(self) -> None:
+        for states, alphabet in ((set(), set()), ({"q0"}, set()), (set(), {"a"})):
+            with self.subTest(states=states, alphabet=alphabet):
+                automaton = Automaton.from_components(
+                    states=states, alphabet=alphabet, transitions=set(),
+                )
+                self.assertTrue(automaton.is_complete)
+
+    def test_is_complete_checks_unreachable_states_and_every_symbol(self) -> None:
+        automaton = Automaton.from_components(
+            states={"q0", "unreachable"},
+            alphabet={"a", "b"},
+            transitions={
+                ("q0", "a", "q0"),
+                ("q0", "b", "q0"),
+                ("unreachable", "a", "unreachable"),
+            },
+            initial_states={"q0"},
+        )
+
+        self.assertFalse(automaton.is_complete)
+        automaton.add_transition("unreachable", "b", "unreachable")
+        self.assertTrue(automaton.is_complete)
+
+    def test_is_complete_allows_nondeterminism_and_multiple_initial_states(self) -> None:
+        for automaton_type in (Automaton, FiniteAutomaton, NBA, GNBA):
+            with self.subTest(automaton_type=automaton_type):
+                automaton = automaton_type.from_components(
+                    states={"q0", "q1"},
+                    alphabet={"a"},
+                    transitions={
+                        ("q0", "a", "q0"),
+                        ("q0", "a", "q1"),
+                        ("q1", "a", "q1"),
+                    },
+                    initial_states={"q0", "q1"},
+                )
+
+                self.assertTrue(automaton.is_complete)
+                self.assertFalse(automaton.is_deterministic)
+
+    def test_is_complete_reflects_mutations(self) -> None:
+        automaton = Automaton.from_components(
+            states={"q0"}, alphabet={"a"}, transitions={("q0", "a", "q0")},
+        )
+        self.assertTrue(automaton.is_complete)
+
+        automaton.add_symbol("b")
+        self.assertFalse(automaton.is_complete)
+        automaton.add_transition("q0", "b", "q0")
+        self.assertTrue(automaton.is_complete)
+
+        automaton.add_state("q1")
+        self.assertFalse(automaton.is_complete)
+        automaton.add_transition("q1", "a", "q1")
+        automaton.add_transition("q1", "b", "q1")
+        self.assertTrue(automaton.is_complete)
+
+        automaton.remove_transition("q1", "a", "q1")
+        self.assertFalse(automaton.is_complete)
+        automaton.remove_symbol("a")
+        self.assertTrue(automaton.is_complete)
+
     def test_remove_state_and_symbol_remove_incident_transitions(self) -> None:
         self.automaton.add_symbol("a")
         self.automaton.add_symbol("b")

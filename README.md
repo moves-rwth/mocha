@@ -68,6 +68,10 @@ when at least one run starts in an initial state, consumes the whole word,
 and ends in an accepting state. It represents NFAs and their deterministic
 instances, which may have missing transitions.
 
+`is_complete` checks that every state has at least one successor for every
+alphabet symbol, independently of `is_deterministic`. With no states or no
+alphabet symbols, the automaton is complete because there are no pairs to check.
+
 ```python
 from mocha.models import FiniteAutomaton
 

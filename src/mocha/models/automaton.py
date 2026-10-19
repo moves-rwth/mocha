@@ -221,6 +221,20 @@ class Automaton(Generic[AutomatonState, Symbol]):
             )
         )
 
+    @property
+    def is_complete(self) -> bool:
+        """Return whether every state-symbol pair has at least one successor.
+
+        All states are checked, including unreachable ones. Completeness is
+        independent of determinism, initial states, and acceptance conditions.
+        With no states or no alphabet symbols, the condition is vacuously true.
+        """
+        return all(
+            transitions_by_symbol.get(symbol)
+            for transitions_by_symbol in self._transitions.values()
+            for symbol in self._alphabet
+        )
+
     def remove_transition(
             self,
             source: AutomatonState,
