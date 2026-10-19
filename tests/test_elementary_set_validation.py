@@ -1,10 +1,21 @@
+"""Check individual elementary sets and feedback on full computed collections.
+
+Collection checks retain per-state violations, report duplicates and omissions,
+and return canonical ordered states through the raising validator.
+"""
+
 from dataclasses import FrozenInstanceError
 from itertools import combinations
 import unittest
 
-from mocha import normalize_ltl
+from mocha import (
+    ElementarySetCollectionResult, check_elementary_set_collection,
+    compute_transition_relation, enumerate_elementary_sets, normalize_ltl,
+    validate_elementary_set_collection,
+)
 from mocha.algorithms.ltl2gnba.elementary_set_validation import check_elementary_set
 from mocha.io import parse_ltl
+from mocha.logic.ltl import BooleanConstant, Next, Not, Proposition, Until
 
 
 def formulas(*sources):
@@ -131,6 +142,106 @@ class ElementarySetTests(unittest.TestCase):
         self.assertEqual(result.candidate, formulas('"p"'))
         with self.assertRaises(FrozenInstanceError):
             result.candidate = frozenset()
+
+
+class ElementarySetCollectionTests(unittest.TestCase):
+    def test_reports_invalid_duplicates_and_missing_states_together(self):
+        p, q = Proposition("p"), Proposition("q")
+        states = [{p}, {Not(Not(p))}, {p, Not(p)}, {q}, set()]
+        result = check_elementary_set_collection(p, states)
+        self.assertIsInstance(result, ElementarySetCollectionResult)
+        self.assertFalse(result.is_valid)
+        self.assertFalse(result.is_complete)
+        self.assertEqual([state.is_elementary for state in result.state_results],
+                         [True, True, False, False, False])
+        self.assertEqual(result.duplicate_indices, ((0, 1),))
+        self.assertEqual(result.missing_sets, (frozenset({Not(p)}),))
+        self.assertEqual(result.state_results[1].candidate, {Not(Not(p))})
+        self.assertIn("contradiction", {v.rule for v in result.state_results[2].violations})
+        self.assertIn("outside_closure", {v.rule for v in result.state_results[3].violations})
+        self.assertIn("missing_choice", {v.rule for v in result.state_results[4].violations})
+
+    def test_coverage_does_not_hide_invalid_or_duplicate_entries(self):
+        p = Proposition("p")
+        result = check_elementary_set_collection(p, [{p}, {Not(p)}, {p}, {p, Not(p)}])
+        self.assertTrue(result.is_complete)
+        self.assertFalse(result.is_valid)
+        self.assertEqual(result.missing_sets, ())
+        self.assertEqual(result.duplicate_indices, ((0, 2),))
+        self.assertFalse(result.state_results[-1].is_elementary)
+
+    def test_complete_collection_preserves_order_and_equivalent_spellings(self):
+        p = Proposition("p")
+        states = [{Not(p)}, {Not(Not(p))}]
+        checked = check_elementary_set_collection(p, (iter(state) for state in states))
+        self.assertTrue(checked.is_valid)
+        self.assertTrue(checked.is_complete)
+        self.assertEqual([state.candidate for state in checked.state_results], states)
+        validated = validate_elementary_set_collection(p, (iter(state) for state in states))
+        self.assertEqual(validated, (frozenset({Not(p)}), frozenset({p})))
+        result = compute_transition_relation(p, validated)
+        self.assertEqual(result.table.states, validated)
+
+    def test_empty_collection_reports_all_required_states(self):
+        p = Proposition("p")
+        result = check_elementary_set_collection(p, [])
+        self.assertFalse(result.is_valid)
+        self.assertEqual(result.state_results, ())
+        self.assertEqual(set(result.missing_sets), {frozenset({p}), frozenset({Not(p)})})
+        with self.assertRaisesRegex(ValueError, "missing 2 elementary sets"):
+            validate_elementary_set_collection(p, [])
+
+    def test_false_formula_still_requires_its_noninitial_elementary_state(self):
+        false, true = BooleanConstant(False), BooleanConstant(True)
+        result = check_elementary_set_collection(false, [])
+        self.assertEqual(result.missing_sets, (frozenset({true}),))
+        self.assertTrue(check_elementary_set_collection(false, [{true}]).is_valid)
+
+    def test_completeness_requires_states_excluding_the_input_formula(self):
+        p, q = Proposition("p"), Proposition("q")
+        formula = Until(p, q)
+        initial_states = [{p, q, formula}, {Not(p), q, formula}, {p, Not(q), formula}]
+        result = check_elementary_set_collection(formula, initial_states)
+        self.assertTrue(all(state.is_elementary for state in result.state_results))
+        self.assertEqual(set(result.missing_sets),
+                         {frozenset({p, Not(q), Not(formula)}),
+                          frozenset({Not(p), Not(q), Not(formula)})})
+        self.assertTrue(check_elementary_set_collection(
+            formula, [*initial_states, *result.missing_sets],
+        ).is_valid)
+
+    def test_raising_validator_includes_all_feedback(self):
+        p = Proposition("p")
+        with self.assertRaises(ValueError) as caught:
+            validate_elementary_set_collection(p, [{p}, {p}, {p, Not(p)}])
+        message = str(caught.exception)
+        self.assertIn("B3 is not an elementary set", message)
+        self.assertIn("B2 duplicates elementary set B1", message)
+        self.assertIn("missing 1 elementary set (", message)
+        self.assertIn("¬p", message)
+
+    def test_generated_collections_are_valid_for_nested_and_constant_formulas(self):
+        for source in ('X!"p"', '("p" U "q") U "p"', "X true", "X false", "false"):
+            with self.subTest(source=source):
+                formula = parse_ltl(source)
+                states = enumerate_elementary_sets(formula).elementary_sets
+                self.assertTrue(check_elementary_set_collection(formula, states).is_valid)
+        true = BooleanConstant(True)
+        alias = Not(BooleanConstant(False))
+        self.assertEqual(validate_elementary_set_collection(
+            Next(true), [{alias, Next(alias)}, {alias, Not(Next(alias))}],
+        ), (frozenset({true, Next(true)}), frozenset({true, Not(Next(true))})))
+
+    def test_input_types_and_normal_form_are_checked(self):
+        p = Proposition("p")
+        for check in (check_elementary_set_collection, validate_elementary_set_collection):
+            with self.subTest(check=check.__name__):
+                with self.assertRaisesRegex(TypeError, "formula must be an LTLFormula"):
+                    check("p", [])
+                with self.assertRaisesRegex(TypeError, "candidate members must be LTLFormula"):
+                    check(p, [{"p"}])
+                with self.assertRaisesRegex(ValueError, "not normalized"):
+                    check(parse_ltl('F"p"'), [])
 
 
 if __name__ == "__main__":
