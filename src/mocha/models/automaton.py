@@ -207,10 +207,12 @@ class Automaton(Generic[AutomatonState, Symbol]):
 
     @property
     def is_deterministic(self) -> bool:
-        """Return whether the automaton has at most one run per input word.
+        """Return whether the automaton is structurally deterministic.
 
-        A partial automaton is deterministic when it has at most one initial
-        state and each state-symbol pair has at most one successor.
+        There must be at most one initial state and at most one successor for
+        every state-symbol pair, including those at unreachable states.
+        Missing transitions are allowed; :attr:`is_complete` checks that
+        every state-symbol pair has a successor.
         """
         return (
             len(self._initial_states) <= 1
