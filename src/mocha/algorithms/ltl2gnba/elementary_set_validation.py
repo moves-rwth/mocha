@@ -4,7 +4,7 @@ Individual checks report closure, Boolean, local UNTIL, and maximality
 violations. Collection checks add duplicate and completeness feedback for
 computed solutions, retaining every submitted state and its individual result.
 Completeness verification recomputes the full enumeration and can be expensive;
-transition construction uses only individual checks and duplicate detection.
+component construction uses only individual checks and duplicate detection.
 """
 
 from collections.abc import Iterable
@@ -224,7 +224,7 @@ def check_elementary_set_collection(
     so callers can give feedback on a student's full submission.
 
     Completeness checking recomputes the entire elementary-set enumeration and
-    can take exponential time and space. Transition construction does not invoke
+    can take exponential time and space. Component construction does not invoke
     this check. A full collection includes states excluding the input formula.
 
     Returns:
