@@ -2,11 +2,14 @@
 
 from .models import Action, AtomicProposition, State, Transition, TransitionSystem
 from .algorithms import TransitionSystemOverlay
-from .logic.ltl import (
+from .algorithms.ltl_transformations import (
     LTLRewriteStep,
     normalize_ltl,
     to_release_pnf,
     to_weak_until_pnf,
+    trace_normalize_ltl,
+    trace_release_pnf,
+    trace_weak_until_pnf,
 )
 
 
@@ -21,4 +24,7 @@ __all__ = [
     "normalize_ltl",
     "to_release_pnf",
     "to_weak_until_pnf",
+    "trace_normalize_ltl",
+    "trace_release_pnf",
+    "trace_weak_until_pnf",
 ]
