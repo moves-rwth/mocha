@@ -1,4 +1,4 @@
-"""Import and export helpers for MoChA transition-system documents."""
+"""Parsing and import/export helpers for formulas and transition systems."""
 
 from .ltl import LTLParseError, parse_ltl
 from .transition_system import (
