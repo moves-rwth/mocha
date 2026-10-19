@@ -69,6 +69,13 @@ immutable snapshots. Query successors with `post(state, action=None)`,
 predecessors with `pre(state, action=None)`, and iterate the relation with
 `transitions()`.
 
+## Development
+
+Run the test suite from the repository root:
+
+```bash
+PYTHONPATH=src python -m unittest discover -s tests
+```
 
 ## License
 
