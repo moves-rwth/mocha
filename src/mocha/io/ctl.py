@@ -1,4 +1,18 @@
-"""Parse CTL text into immutable formula syntax trees."""
+"""Parse CTL text into immutable formula syntax trees.
+
+The ``state`` and ``path`` productions implement ``Φ`` and ``φ`` from
+:mod:`mocha.logic.ctl`. The extra ``unary`` production expresses precedence
+in concrete source notation. The recursive-descent parser follows::
+
+    state ::= unary ("&" unary)*
+    unary ::= quoted_proposition | "true" | "false" | "(" state ")"
+            | "!" unary | ("E" | "A") path
+    path  ::= ("X" | "F" | "G") unary | "(" state ("U" | "W") state ")"
+
+Negation and quantified temporal operators bind more tightly than conjunction.
+Tokenization separates adjacent operators, so ``EX "p"`` and ``E X "p"``
+follow the same productions. Unicode spellings are translated to ASCII tokens.
+"""
 
 from __future__ import annotations
 
@@ -105,45 +119,58 @@ class _Parser:
             raise CTLParseError(self.source, self.current.position, f"Expected {value!r}")
         self.advance()
 
-    def formula(self, minimum_precedence: int = 1) -> CTLStateFormula:
+    def state_formula(self) -> CTLStateFormula:
+        """Parse a conjunction of unary state formulae, grouped to the left."""
+        formula = self.unary_state_formula()
+        while self.current.kind == "operator" and self.current.value == "&":
+            self.advance()
+            formula = And(formula, self.unary_state_formula())
+        return formula
+
+    def unary_state_formula(self) -> CTLStateFormula:
+        """Parse an atom, grouped state formula, negation, or quantifier."""
         token = self.advance()
         if token.kind == "proposition":
-            left: CTLStateFormula = Proposition(token.value)
-        elif token.kind == "keyword" and token.value in {"true", "false"}:
-            left = BooleanConstant(token.value == "true")
-        elif token.kind == "operator" and token.value == "(":
-            left = self.formula()
+            return Proposition(token.value)
+        if token.kind == "keyword" and token.value in {"true", "false"}:
+            return BooleanConstant(token.value == "true")
+        if token.kind == "operator" and token.value == "(":
+            formula = self.state_formula()
             self.expect(")")
-        elif token.kind == "operator" and token.value == "!":
-            left = Not(self.formula(3))
-        elif token.kind == "operator" and token.value in {"E", "A"}:
-            if self.current.kind == "operator" and self.current.value in {"X", "F", "G"}:
-                operator = self.advance().value
-                path: CTLPathFormula = {"X": Next, "F": Eventually, "G": Always}[operator](self.formula(3))
-            else:
-                self.expect("(")
-                until_left = self.formula()
-                if self.current.kind != "operator" or self.current.value not in {"U", "W"}:
-                    raise CTLParseError(self.source, self.current.position, "Expected 'U' or 'W'")
-                operator = self.advance().value
-                until_right = self.formula()
-                self.expect(")")
-                path = (Until if operator == "U" else WeakUntil)(until_left, until_right)
-            left = (Exists if token.value == "E" else ForAll)(path)
-        else:
-            raise CTLParseError(self.source, token.position, "Expected a CTL formula")
+            return formula
+        if token.kind == "operator" and token.value == "!":
+            return Not(self.unary_state_formula())
+        if token.kind == "operator" and token.value in {"E", "A"}:
+            path = self.path_formula()
+            if token.value == "E":
+                return Exists(path)
+            return ForAll(path)
+        raise CTLParseError(self.source, token.position, "Expected a CTL state formula")
 
-        while (
-            self.current.kind == "operator"
-            and self.current.value == "&"
-            and minimum_precedence <= 1
-        ):
-            self.advance()
-            left = And(left, self.formula(2))
-        return left
+    def path_formula(self) -> CTLPathFormula:
+        """Parse one temporal operator with state-formula operands."""
+        if self.current.kind == "operator" and self.current.value in {"X", "F", "G"}:
+            operator = self.advance().value
+            operand = self.unary_state_formula()
+            if operator == "X":
+                return Next(operand)
+            if operator == "F":
+                return Eventually(operand)
+            return Always(operand)
+
+        self.expect("(")
+        left = self.state_formula()
+        if self.current.kind != "operator" or self.current.value not in {"U", "W"}:
+            raise CTLParseError(self.source, self.current.position, "Expected 'U' or 'W'")
+        operator = self.advance().value
+        right = self.state_formula()
+        self.expect(")")
+        if operator == "U":
+            return Until(left, right)
+        return WeakUntil(left, right)
 
     def parse(self) -> CTLStateFormula:
-        formula = self.formula()
+        formula = self.state_formula()
         if self.current.kind != "end":
             raise CTLParseError(self.source, self.current.position, "Unexpected token")
         return formula
