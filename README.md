@@ -3,14 +3,15 @@
 [![CI](https://github.com/moves-rwth/mocha/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/moves-rwth/mocha/actions/workflows/ci.yml)
 
 MoChA is a small, typed Python library for representing labelled transition
-systems and automata, checking reachability, invariants, persistence, and LTL
-properties, and parsing and transforming LTL formulas. Algorithm traces expose
+systems and automata, checking reachability, invariants, persistence, and CTL
+and LTL properties, and parsing and transforming temporal-logic formulas. Algorithm traces expose
 intermediate steps for teaching and worked examples.
 
 The public API is available from `mocha`: models, analysis results and traces,
 algorithms, and parsing and JSON helpers. These names are also exported from
-`mocha.models`, `mocha.algorithms`, and `mocha.io`. LTL formula constructors
-live in `mocha.logic.ltl` (also available as `mocha.ltl`), and rendering helpers
+`mocha.models`, `mocha.algorithms`, and `mocha.io`. CTL and LTL formula constructors
+live in `mocha.logic.ctl` and `mocha.logic.ltl` (also available as `mocha.ctl`
+and `mocha.ltl`), and rendering helpers
 are exported from `mocha.visualisation` with the optional `visualization` extra.
 
 ## Install
@@ -242,6 +243,79 @@ The automaton must declare its complete alphabet $2^{\mathrm{AP}}$, including
 valuations that no system state currently uses. This follows the formal product
 definition and makes a mismatched proposition vocabulary explicit.
 
+
+## State and Path Formulas
+
+`mocha.logic.StateFormula` and `mocha.logic.PathFormula` distinguish formulas
+evaluated at a state from formulas evaluated along a path. Both inherit from
+`Formula`. LTL syntax trees inherit from `PathFormula`.
+
+CTL has separate `CTLStateFormula` and `CTLPathFormula` types in
+`mocha.logic.ctl`, with `CTLFormula` as their common base. Propositions,
+Boolean operations, and path quantifiers are state formulas. Temporal
+operators are path formulas, and their operands must be CTL state formulas:
+
+```python
+from mocha import parse_ctl
+from mocha.logic.ctl import Exists, Next, Proposition, is_ctl_formula
+
+formula = Exists(Next(Proposition("ready")))
+assert formula == parse_ctl('EX "ready"')
+assert is_ctl_formula(formula)
+assert not is_ctl_formula(formula.operand)  # A bare path is not a CTL state formula.
+```
+
+`Exists` and `ForAll` quantify path formulas built with `Next`, `Always`,
+`Eventually`, `Until`, and `WeakUntil`. Both existential and universal
+quantification support all five. Construct formulas with explicit quantifier
+and temporal nodes, such as `Exists(Next(p))` or `ForAll(Always(p))`.
+Compact source notation such as `EX "p"` and `AG "p"` is also accepted.
+
+`parse_ctl` still accepts only the supported CTL fragment. Constructors reject
+unquantified temporal operands, such as `Always(Next(p))`. `is_ctl_formula`
+checks the fragment recursively, independently of normal form.
+`Exists(Eventually(p))` and `Exists(WeakUntil(p, q))` have source spellings
+`EF "p"` and `E("p" W "q")`. Normalization rewrites them using existential
+until and always.
+CTL normal forms and their rewrite traces live in
+`mocha.algorithms.ctl_transformations`, following the LTL organization.
+`CTLRewriteStep`, `to_existential_normal_form`, and
+`trace_existential_normal_form` are also exported from `mocha.algorithms`
+and `mocha`.
+`model_check_ctl(system, to_existential_normal_form(formula))`
+evaluates CTL state formulas and reports satisfaction sets only for state
+subformulas. Rewrite trace paths include the extra quantifier/temporal level;
+the proposition in `Exists(Next(p))` is at `("operand", "operand")`.
+The `EU` and `EG` searches follow Algorithms 15 and 16 in *Principles of
+Model Checking*. With `detail="reasoning"`, their trace records the candidate
+set `T`, pending set `E`, and processed state after each worklist iteration;
+the `EG` trace also includes successor counters.
+
+The CTL workflow keeps each stage explicit: construct or parse a formula,
+rewrite it into existential normal form, then compute the state-subformula
+sets. For example, every path in this system eventually reaches `done`:
+
+```python
+from mocha import (
+    TransitionSystem, model_check_ctl, parse_ctl,
+    to_existential_normal_form, trace_ctl_model_checking,
+)
+
+ctl_system = TransitionSystem.from_edges(
+    states={"waiting", "done"},
+    edges={("waiting", "done"), ("done", "done")},
+    action="step", initial_states={"waiting"},
+    atomic_propositions={"done"}, labels={"done": {"done"}},
+)
+ctl_formula = parse_ctl('AF "done"')
+ctl_enf = to_existential_normal_form(ctl_formula)  # AF done ≡ ¬EG ¬done
+ctl_result = model_check_ctl(ctl_system, ctl_enf)
+assert ctl_result.satisfies
+assert ctl_result.satisfying_states == {"waiting", "done"}
+
+ctl_trace = trace_ctl_model_checking(ctl_system, ctl_enf, detail="reasoning")
+assert ctl_trace.result == ctl_result
+```
 
 ## LTL Formulas
 
