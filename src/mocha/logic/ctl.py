@@ -1,36 +1,25 @@
 """Immutable CTL syntax trees and formatting.
 
-The supported abstract syntax is given by the mutually recursive grammar::
+Following the notation of Definition 6.1 in *Principles of Model Checking*,
+the supported grammar, including derived operators, is::
 
-    state ::= BooleanConstant(bool)
-            | Proposition(str)
-            | Not(state)
-            | And(state, state)
-            | Exists(path)
-            | ForAll(path)
+    Φ ::= true | false | a | Φ₁ ∧ Φ₂ | ¬Φ | ∃φ | ∀φ
+    φ ::= ◯Φ | Φ₁ U Φ₂ | ◇Φ | □Φ | Φ₁ W Φ₂
 
-    path ::= Next(state)
-           | Always(state)
-           | Eventually(state)
-           | Until(state, state)
-           | WeakUntil(state, state)
+Here ``a ∈ AP``, uppercase ``Φ`` denotes a state formula, and lowercase ``φ``
+denotes a path formula. These correspond to ``CTLStateFormula`` and
+``CTLPathFormula``. A complete CTL formula is a state formula.
 
-Here ``bool`` and ``str`` denote Python values. Only ``state`` is a complete
-CTL formula; ``path`` is the operand of a quantifier. Every temporal operator
-takes state formulae, so temporal nesting must pass through a quantifier:
-``ForAll(Always(ForAll(Eventually(p))))`` is valid, whereas
-``ForAll(Always(Eventually(p)))`` is not.
+Each path formula contains one temporal operator with state-formula operands.
+Temporal nesting therefore passes through another path quantifier:
+``∀□∀◇a`` is valid CTL, whereas ``∀□◇a`` is not.
 
-In source notation, the existential productions are ``EX``, ``EF``, ``EG``,
-``E(φ U ψ)``, and ``E(φ W ψ)``. Universal productions are ``AX``, ``AF``,
-``AG``, ``A(φ U ψ)``, and ``A(φ W ψ)``, where ``φ`` and ``ψ`` are state
-formulae. Both quantifiers accept the same path grammar.
-Propositions must be double-quoted in source. ASCII and textbook Unicode
-operators are accepted; ``to_source()`` produces parseable Unicode notation.
-
-State formulae and path formulae have distinct types. Construct quantified
-formulae explicitly, for example ``Exists(Next(Proposition("p")))`` for
-``EX "p"``. CTL temporal operators take state formulae as operands.
+Construct the syntax tree with explicit quantifier and temporal nodes:
+``∃◯a`` is ``Exists(Next(Proposition("a")))``. ASCII input spells this
+``EX "a"`` or ``E X "a"``. The other temporal operators use ``F``, ``G``,
+``U``, and ``W``, and universal quantification uses ``A``. Proposition names
+must be double-quoted in source. ``to_source()`` produces parseable Unicode
+notation; the parser's concrete grammar lives in :mod:`mocha.io.ctl`.
 """
 
 from __future__ import annotations
@@ -41,6 +30,11 @@ import re
 
 from ._syntax import CTL_KEYWORDS as _KEYWORDS, CTL_OPERATOR_CHAIN as _OPERATOR_CHAIN
 from .formula import Formula, PathFormula, StateFormula
+
+
+# The basic grammar uses true, a, ∧, ¬, ∃, ∀, ◯, and U as the primitive syntax.
+# We also keep false, ◇, □, and W as explicit nodes for readable input and
+# rewrite traces. Normalization eliminates them as required by the target form.
 
 
 class CTLFormula(Formula):
@@ -55,11 +49,11 @@ class CTLFormula(Formula):
 
 
 class CTLStateFormula(CTLFormula, StateFormula):
-    """A CTL formula evaluated at a state."""
+    """A state formula ``Φ``, evaluated at a state of a transition system."""
 
 
 class CTLPathFormula(CTLFormula, PathFormula):
-    """A temporal operator applied to CTL state formulae."""
+    """A path formula ``φ``: one temporal operator with state-formula operands."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -92,6 +86,8 @@ class And(CTLStateFormula):
 
 @dataclass(frozen=True, slots=True)
 class Next(CTLPathFormula):
+    """The next state on the path satisfies ``operand``."""
+
     operand: CTLStateFormula
 
     def __post_init__(self) -> None:
@@ -100,6 +96,8 @@ class Next(CTLPathFormula):
 
 @dataclass(frozen=True, slots=True)
 class Always(CTLPathFormula):
+    """Every state on the path, including the first, satisfies ``operand``."""
+
     operand: CTLStateFormula
 
     def __post_init__(self) -> None:
@@ -108,6 +106,8 @@ class Always(CTLPathFormula):
 
 @dataclass(frozen=True, slots=True)
 class Eventually(CTLPathFormula):
+    """Some state on the path, possibly the first, satisfies ``operand``."""
+
     operand: CTLStateFormula
 
     def __post_init__(self) -> None:
@@ -116,6 +116,8 @@ class Eventually(CTLPathFormula):
 
 @dataclass(frozen=True, slots=True)
 class Until(CTLPathFormula):
+    """``right`` eventually holds, and ``left`` holds at every earlier state."""
+
     left: CTLStateFormula
     right: CTLStateFormula
 
@@ -126,6 +128,8 @@ class Until(CTLPathFormula):
 
 @dataclass(frozen=True, slots=True)
 class WeakUntil(CTLPathFormula):
+    """Until, also allowing ``left`` to hold forever without ``right`` occurring."""
+
     left: CTLStateFormula
     right: CTLStateFormula
 
@@ -136,7 +140,7 @@ class WeakUntil(CTLPathFormula):
 
 @dataclass(frozen=True, slots=True)
 class Exists(CTLStateFormula):
-    """Existential path quantifier."""
+    """Some infinite path from the current state satisfies ``operand``."""
 
     operand: CTLPathFormula
 
@@ -147,7 +151,7 @@ class Exists(CTLStateFormula):
 
 @dataclass(frozen=True, slots=True)
 class ForAll(CTLStateFormula):
-    """Universal path quantifier."""
+    """Every infinite path from the current state satisfies ``operand``."""
 
     operand: CTLPathFormula
 
