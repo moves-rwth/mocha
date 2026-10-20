@@ -187,9 +187,20 @@ def is_ctl_formula(formula: Formula) -> bool:
     return False
 
 
+_AND_PRECEDENCE = 1
+_PREFIX_PRECEDENCE = 2
+
+
 def _format_formula(
     formula: CTLFormula, minimum_precedence: int = 0, *, quote_propositions: bool = False,
 ) -> str:
+    """Parenthesize to preserve the tree's grouping and operator precedence.
+
+    Prefix operators bind more tightly than conjunction. The right side of
+    a conjunction needs parentheses when it is itself a conjunction, because
+    the parser groups unparenthesized conjunctions to the left. Until and
+    weak until always use parentheses, matching their source grammar.
+    """
     if isinstance(formula, BooleanConstant):
         return "true" if formula.value else "false"
     if isinstance(formula, Proposition):
@@ -199,16 +210,23 @@ def _format_formula(
             return formula.name
         return json.dumps(formula.name, ensure_ascii=False)
     if isinstance(formula, And):
-        result = (
-            f"{_format_formula(formula.left, 1, quote_propositions=quote_propositions)} ∧ "
-            f"{_format_formula(formula.right, 2, quote_propositions=quote_propositions)}"
+        left = _format_formula(
+            formula.left, _AND_PRECEDENCE, quote_propositions=quote_propositions,
         )
-        return f"({result})" if minimum_precedence > 1 else result
+        right = _format_formula(
+            formula.right, _AND_PRECEDENCE + 1, quote_propositions=quote_propositions,
+        )
+        result = f"{left} ∧ {right}"
+        return f"({result})" if minimum_precedence > _AND_PRECEDENCE else result
     if isinstance(formula, Not):
-        result = "¬" + _format_formula(formula.operand, 3, quote_propositions=quote_propositions)
+        result = "¬" + _format_formula(
+            formula.operand, _PREFIX_PRECEDENCE, quote_propositions=quote_propositions,
+        )
     elif isinstance(formula, (Exists, ForAll)):
         quantifier = "∃" if isinstance(formula, Exists) else "∀"
-        result = quantifier + _format_formula(formula.operand, 3, quote_propositions=quote_propositions)
+        result = quantifier + _format_formula(
+            formula.operand, _PREFIX_PRECEDENCE, quote_propositions=quote_propositions,
+        )
     elif isinstance(formula, (Next, Always, Eventually)):
         if isinstance(formula, Next):
             operator = "◯"
@@ -216,7 +234,9 @@ def _format_formula(
             operator = "□"
         else:
             operator = "◇"
-        result = operator + _format_formula(formula.operand, 3, quote_propositions=quote_propositions)
+        result = operator + _format_formula(
+            formula.operand, _PREFIX_PRECEDENCE, quote_propositions=quote_propositions,
+        )
     elif isinstance(formula, (Until, WeakUntil)):
         operator = "U" if isinstance(formula, Until) else "W"
         result = (
@@ -228,7 +248,7 @@ def _format_formula(
         )
     else:
         raise TypeError(f"Unknown CTL formula node: {type(formula).__name__}")
-    return f"({result})" if minimum_precedence > 3 else result
+    return f"({result})" if minimum_precedence > _PREFIX_PRECEDENCE else result
 
 
 def propositions(formula: CTLFormula) -> frozenset[str]:
