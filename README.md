@@ -3,9 +3,9 @@
 [![CI](https://github.com/moves-rwth/mocha/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/moves-rwth/mocha/actions/workflows/ci.yml)
 
 MoChA is a small, typed Python library for representing labelled transition
-systems and automata, checking reachability, invariants, and persistence, and
-parsing and transforming LTL formulas. Algorithm traces expose intermediate
-steps for teaching and worked examples.
+systems and automata, checking reachability, invariants, persistence, and LTL
+properties, and parsing and transforming LTL formulas. Algorithm traces expose
+intermediate steps for teaching and worked examples.
 
 The public API is available from `mocha`: models, analysis results and traces,
 algorithms, and parsing and JSON helpers. These names are also exported from
@@ -331,6 +331,93 @@ callback to stream the same snapshots.
 These transformations preserve the formula's meaning on infinite words.
 Parsing and transforming a formula do not check whether a transition system
 satisfies it.
+
+### Model Checking
+
+`check_ltl(system, property)` checks whether **every infinite run from every
+initial state** satisfies an LTL formula. Interpretation starts with the initial
+state's label: `"grant"` concerns that state, while `X "grant"` concerns its
+successor. Derived operators such as `F` and `G` are normalized automatically.
+
+The system must have no terminal states, including unreachable ones. Its
+declared atomic proposition names must be strings, and every name in the formula
+must be declared. Extra system propositions are allowed and ignored by the
+automaton construction. The input system is not modified. With no initial
+states, every property holds vacuously.
+
+```python
+from mocha import TransitionSystem, check_ltl, parse_ltl
+
+ltl_system = TransitionSystem.from_components(
+    states={"waiting", "granted"},
+    actions={"step"},
+    transitions={
+        ("waiting", "step", "granted"),
+        ("granted", "step", "granted"),
+    },
+    initial_states={"waiting"},
+    atomic_propositions={"grant"},
+    labels={"waiting": set(), "granted": {"grant"}},
+)
+
+assert check_ltl(ltl_system, parse_ltl('F "grant"')).satisfies
+
+ltl_property = parse_ltl('G "grant"')
+ltl_result = check_ltl(ltl_system, ltl_property)
+assert not ltl_result.satisfies  # grant is absent in the initial state
+```
+
+When the property fails, `counterexample` contains a finite representation of
+an infinite violating path: a prefix followed by a repeating cycle, called a
+lasso. Its entries are original system states. The final entry repeats the state
+at the zero-based `loop_start` index to close the cycle; omit that last entry
+when extracting the repeating portion:
+
+```python
+ltl_path = ltl_result.counterexample
+ltl_loop_start = ltl_result.loop_start
+assert ltl_path is not None and ltl_loop_start is not None
+assert ltl_path[-1] == ltl_path[ltl_loop_start]
+
+ltl_prefix = ltl_path[:ltl_loop_start]   # traverse once
+ltl_cycle = ltl_path[ltl_loop_start:-1]  # repeat forever
+assert ltl_cycle
+```
+
+Apply `ltl_system.labels(state)` along that infinite path to obtain the word
+that violates the property. A counterexample need not be shortest or unique.
+When the property holds, `counterexample`, `product_counterexample`, and
+`loop_start` are all `None`.
+
+For construction details, the result also retains the negated formula, its
+GNBA translation, the equivalent NBA, and the system–NBA product. The separate
+`search_product` marks non-accepting states and completes product dead ends with
+a non-accepting sink for persistence search. `product_counterexample` retains
+the automaton component of each path position; `counterexample` projects it
+onto the original system while preserving the cycle boundary.
+
+`trace_check_ltl` collects the steps for negation, GNBA translation, NBA
+conversion, product construction, emptiness search, and the verdict. Detailed
+translation and depth-first-search events are available in each step's `detail`:
+
+```python
+from mocha import trace_check_ltl
+
+ltl_trace = trace_check_ltl(ltl_system, ltl_property)
+assert not ltl_trace.result.satisfies
+for step in ltl_trace.steps:
+    print(step.iteration, step.stage, step.message)
+```
+
+The direct check also accepts `on_step` to stream the same events. Trace helpers
+retain all snapshots in memory. To draw the projected counterexample, use the
+lasso renderer with the optional `visualization` extra:
+
+```python
+from mocha.visualisation import to_lasso_graphviz
+
+ltl_graph = to_lasso_graphviz(ltl_system, ltl_path, ltl_loop_start)
+```
 
 ## Visualisation
 

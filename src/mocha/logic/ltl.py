@@ -142,6 +142,18 @@ def _format_formula(
     raise TypeError(f"Unknown LTL formula node: {type(formula).__name__}")
 
 
+def complement(formula: LTLFormula) -> LTLFormula:
+    """Negate a formula, cancelling an outer negation or flipping a constant.
+
+    Other formulas are wrapped in ``Not`` without further normalization.
+    """
+    if isinstance(formula, Not):
+        return formula.operand
+    if isinstance(formula, BooleanConstant):
+        return BooleanConstant(not formula.value)
+    return Not(formula)
+
+
 def propositions(formula: LTLFormula) -> frozenset[str]:
     """Return the atomic proposition names referenced by a formula."""
     if isinstance(formula, Proposition):
@@ -158,5 +170,5 @@ def propositions(formula: LTLFormula) -> frozenset[str]:
 __all__ = [
     "Always", "And", "BooleanConstant", "Equiv", "Eventually", "Implies",
     "LTLFormula", "Next", "Not", "Or", "Proposition",
-    "Release", "Until", "WeakUntil", "propositions",
+    "Release", "Until", "WeakUntil", "complement", "propositions",
 ]
