@@ -282,14 +282,19 @@ CTL normal forms and their rewrite traces live in
 `CTLRewriteStep`, `to_existential_normal_form`, and
 `trace_existential_normal_form` are also exported from `mocha.algorithms`
 and `mocha`.
-`model_check_ctl(system, to_existential_normal_form(formula))`
-evaluates CTL state formulas and reports satisfaction sets only for state
-subformulas. Rewrite trace paths include the extra quantifier/temporal level;
+`model_check_ctl` evaluates formulas in existential normal form and reports
+satisfaction sets only for state subformulas of that normalized formula.
+Rewrite trace paths include the extra quantifier/temporal level;
 the proposition in `Exists(Next(p))` is at `("operand", "operand")`.
 The `EU` and `EG` searches follow Algorithms 15 and 16 in *Principles of
 Model Checking*. With `detail="reasoning"`, their trace records the candidate
 set `T`, pending set `E`, and processed state after each worklist iteration;
 the `EG` trace also includes successor counters.
+
+CTL model checking requires a transition system without terminal states:
+every state, including unreachable ones, must have at least one outgoing
+transition. A terminal state causes `ValueError`. The self-loop at `done`
+in the following example ensures that paths continue infinitely.
 
 The CTL workflow keeps each stage explicit: construct or parse a formula,
 rewrite it into existential normal form, then compute the state-subformula
