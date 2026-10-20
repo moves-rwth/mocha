@@ -8,6 +8,11 @@ from .invariance import (
     check_invariant,
     trace_invariant,
 )
+from .ctl_transformations import (
+    CTLRewriteStep,
+    to_existential_normal_form,
+    trace_existential_normal_form,
+)
 from .ltl_transformations import (
     LTLRewriteStep,
     normalize_ltl,
@@ -34,6 +39,9 @@ from .trace import AlgorithmTrace
 
 __all__ = [
     "AlgorithmTrace",
+    "CTLRewriteStep",
+    "to_existential_normal_form",
+    "trace_existential_normal_form",
     "InvariantResult",
     "InvariantStep",
     "LTLRewriteStep",
