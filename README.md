@@ -15,21 +15,28 @@ are exported from `mocha.visualisation` with the optional `visualization` extra.
 
 ## Install
 
-MoChA requires Python 3.11 or later. Install the package from a checkout:
+MoChA requires Python 3.11 or later.
+
+```bash
+python -m pip install mocha-model-checking
+```
+
+For the optional visualisation helpers:
+
+```bash
+python -m pip install 'mocha-model-checking[visualization]'
+```
+
+Rendering images also requires the [Graphviz](https://graphviz.org/)
+executables, including `dot`, to be installed and available on your `PATH`.
+Core models, algorithms, and JSON helpers work without Graphviz.
+
+To install from a source checkout, run one of these commands from its root:
 
 ```bash
 python -m pip install .
-```
-
-Install the optional visualisation dependency to use the Graphviz helpers:
-
-```bash
 python -m pip install '.[visualization]'
 ```
-
-Rendering an image also requires the [Graphviz](https://graphviz.org/)
-executables, including `dot`, to be installed and available on your `PATH`.
-Core models, algorithms, and JSON helpers work without Graphviz.
 
 ## Transition Systems
 
