@@ -28,8 +28,8 @@ Install an editable checkout with visualisation support and the development
 tools:
 
 ```bash
-python -m pip install -e '.[visualization]'
-python -m pip install build twine mypy
+python -m pip install -e '.[visualization,typecheck]'
+python -m pip install build twine
 ```
 
 An editable installation makes source changes available without reinstalling
@@ -54,6 +54,18 @@ python -m unittest discover -s tests -v
 Inspect any skipped tests: rendering tests require `dot`. Add focused
 regression tests when fixing a behavioral bug. For algorithm changes,
 include the model assumptions and an example that exercises the change.
+
+## Check library types
+
+```bash
+python -m mypy
+```
+
+The configuration in `pyproject.toml` checks all of `src/mocha` in strict mode,
+targeting Python 3.11. The `typecheck` extra supplies mypy and the JSON Schema
+stubs. A Graphviz-only override lets mypy read that dependency's partial
+source annotations; checking calls to Graphviz is limited by those annotations.
+CI runs the same library check.
 
 ## Check the typing example
 
