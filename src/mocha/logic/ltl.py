@@ -16,10 +16,11 @@ import json
 import re
 
 from ._syntax import LTL_KEYWORDS as _KEYWORDS, LTL_TEMPORAL_CHAIN as _TEMPORAL_CHAIN
+from .formula import PathFormula
 
 
-class LTLFormula:
-    """Base type for an LTL syntax tree."""
+class LTLFormula(PathFormula):
+    """Base type for an LTL formula. Inherits from PathFormula to enable CTL* support."""
 
     def __str__(self) -> str:
         """Return textbook display notation; use to_source() for parser input."""
