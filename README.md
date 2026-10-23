@@ -515,6 +515,20 @@ Run the test suite from the repository root:
 PYTHONPATH=src python -m unittest discover -s tests
 ```
 
+### Type Checking
+
+Install the type checker, JSON Schema stubs, and visualisation dependency:
+
+```bash
+python -m pip install -e '.[visualization,typecheck]'
+```
+
+Run strict type checking across the library:
+
+```bash
+python -m mypy --strict src/mocha
+```
+
 ## License
 
 MoChA is licensed under the Mozilla Public License 2.0. See

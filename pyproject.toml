@@ -31,3 +31,7 @@ where = ["src"]
 visualization = [
     "graphviz>=0.21",
 ]
+typecheck = [
+    "mypy>=2.4,<3",
+    "types-jsonschema>=4,<5",
+]
