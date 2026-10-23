@@ -40,6 +40,7 @@ Issues = "https://github.com/moves-rwth/mocha/issues"
 where = ["src"]
 
 [tool.setuptools.package-data]
+"mocha" = ["py.typed"]
 "mocha.io.schemas" = ["*.json"]
 
 [project.optional-dependencies]
