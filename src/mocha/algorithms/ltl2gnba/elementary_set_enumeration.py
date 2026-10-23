@@ -188,8 +188,10 @@ def _columns(formula: LTLFormula, closure: frozenset[LTLFormula]) -> tuple[LTLFo
     """
     # NEXT is an independent choice even when its operand is compound. Still
     # traverse that operand: its subformulas also belong to the closure.
-    simple = sorted((node for node in closure if isinstance(node, Proposition)), key=str)
-    simple += sorted((node for node in closure if isinstance(node, Next)), key=str)
+    simple: list[Proposition | Next] = sorted(
+        (node for node in closure if isinstance(node, (Proposition, Next))),
+        key=lambda node: (isinstance(node, Next), str(node)),
+    )
     ordered: list[LTLFormula] = list(simple)
     visited: set[LTLFormula] = set()
 
@@ -294,7 +296,7 @@ def enumerate_elementary_sets(
         return changes
 
     emit("simple_choices", "Choose each atomic proposition and NEXT formula or its negation.",
-         [ElementaryTableChange(row.id, index, None, row.values[index])
+         [ElementaryTableChange(row.id, index, None, value(columns[index], row))
           for row in rows for index in range(simple_count)])
 
     for index, node in enumerate(columns[simple_count:], simple_count):

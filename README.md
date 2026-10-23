@@ -515,6 +515,25 @@ Run the test suite from the repository root:
 PYTHONPATH=src python -m unittest discover -s tests
 ```
 
+### Type Checking
+
+Install the type checker, JSON Schema stubs, and visualisation dependency:
+
+```bash
+python -m pip install -e '.[visualization,typecheck]'
+```
+
+Run strict type checking across the library:
+
+```bash
+python -m mypy
+```
+
+The configuration in `pyproject.toml` checks `src/mocha` in strict mode,
+targeting Python 3.11. Graphviz 0.21 lacks a `py.typed` marker, so a scoped
+override lets mypy read its existing source annotations. Checking calls to
+Graphviz is limited by the annotations it provides.
+
 ## License
 
 MoChA is licensed under the Mozilla Public License 2.0. See

@@ -31,3 +31,17 @@ where = ["src"]
 visualization = [
     "graphviz>=0.21",
 ]
+typecheck = [
+    "mypy>=2.4,<3",
+    "types-jsonschema>=4,<5",
+]
+
+[tool.mypy]
+files = ["src/mocha"]
+python_version = "3.11"
+strict = true
+
+[[tool.mypy.overrides]]
+module = ["graphviz", "graphviz.*"]
+# Graphviz 0.21 has partial source annotations but no py.typed marker.
+follow_untyped_imports = true

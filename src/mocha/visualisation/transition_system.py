@@ -75,7 +75,7 @@ def to_graphviz(
             f"Cannot mark unknown current state: {current_state!r}"
         )
 
-    graph = Digraph()
+    graph: Digraph = Digraph()
     node_ids = {
         state: f"state_{index}" for index, state in enumerate(sorted(ts.states))
     }
@@ -211,7 +211,7 @@ def to_lasso_graphviz(
         if not actions_by_pair[source, target]:
             raise ValueError(f"No transition connects {source!r} to {target!r}")
 
-    graph = Digraph()
+    graph: Digraph = Digraph()
     graph.attr(rankdir="LR")
     graph.node("__initial", label="", shape="none", width="0", height="0")
     graph.edge("__initial", "step_0")

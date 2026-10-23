@@ -10,7 +10,7 @@ followed by an infinitely repeated nonempty loop.
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
-from typing import Literal
+from typing import Final, Literal, cast
 
 from mocha.algorithms.trace import AlgorithmTrace
 from mocha.logic.ltl import LTLFormula, Not
@@ -24,11 +24,18 @@ from .persistence import PersistenceResult, PersistenceStep, check_persistence
 
 NBAState = tuple[ElementarySet, int]
 
+_SatisfiabilityStage = Literal["translation", "nba_conversion", "emptiness", "verdict"]
+_ValidityStage = Literal["negation", "satisfiability", "verdict"]
+
 
 class _SearchMarker(Enum):
     NONACCEPTING = "nonaccepting"
     SINK_STATE = "sink_state"
     SINK_ACTION = "sink_action"
+
+
+_SearchState = NBAState | Literal[_SearchMarker.SINK_STATE]
+_SearchAction = Valuation | Literal[_SearchMarker.SINK_ACTION]
 
 
 @dataclass(frozen=True)
@@ -43,9 +50,9 @@ class LTLSatisfiabilityStep:
     """
 
     iteration: int
-    stage: Literal["translation", "nba_conversion", "emptiness", "verdict"]
+    stage: _SatisfiabilityStage
     message: str
-    detail: LTLToGNBAStep | PersistenceStep | None = None
+    detail: LTLToGNBAStep | PersistenceStep[_SearchState] | None = None
 
 
 @dataclass(frozen=True)
@@ -78,8 +85,8 @@ class LTLSatisfiabilityResult:
     formula: LTLFormula
     translation: LTLToGNBAResult
     nba: NBA[NBAState, Valuation]
-    search_system: TransitionSystem
-    emptiness: PersistenceResult
+    search_system: TransitionSystem[_SearchState, _SearchAction, _SearchMarker]
+    emptiness: PersistenceResult[_SearchState]
     run: tuple[NBAState, ...] | None
     witness: tuple[Valuation, ...] | None
     loop_start: int | None
@@ -96,7 +103,7 @@ class LTLValidityStep:
     """
 
     iteration: int
-    stage: Literal["negation", "satisfiability", "verdict"]
+    stage: _ValidityStage
     message: str
     detail: LTLFormula | LTLSatisfiabilityStep | None = None
 
@@ -155,7 +162,11 @@ def check_ltl_satisfiability(
     """
     iteration = 0
 
-    def report(stage, message, detail=None):
+    def report(
+        stage: _SatisfiabilityStage,
+        message: str,
+        detail: LTLToGNBAStep | PersistenceStep[_SearchState] | None = None,
+    ) -> None:
         nonlocal iteration
         if on_step is not None:
             on_step(LTLSatisfiabilityStep(iteration, stage, message, detail))
@@ -168,10 +179,10 @@ def check_ltl_satisfiability(
     nba = gnba_to_nba(translation.automaton)
     report("nba_conversion", f"Convert the GNBA to an NBA with {len(nba.states)} states.")
 
-    nonaccepting = _SearchMarker.NONACCEPTING
-    sink = _SearchMarker.SINK_STATE
-    sink_action = _SearchMarker.SINK_ACTION
-    search_system = TransitionSystem.from_components(
+    nonaccepting: Final = _SearchMarker.NONACCEPTING
+    sink: Final = _SearchMarker.SINK_STATE
+    sink_action: Final = _SearchMarker.SINK_ACTION
+    search_system = TransitionSystem[_SearchState, _SearchAction, _SearchMarker].from_components(
         states=nba.states,
         actions=nba.alphabet,
         transitions=((edge.source, edge.symbol, edge.target) for edge in nba.transitions()),
@@ -196,13 +207,13 @@ def check_ltl_satisfiability(
         ),
     )
 
-    run = emptiness.counterexample
+    # The non-accepting sink only loops on itself, so an accepting lasso
+    # cannot visit it. The cast records this invariant without changing the run.
+    run = cast(tuple[NBAState, ...] | None, emptiness.counterexample)
     if run is None:
         witness = None
         loop_start = None
     else:
-        # The sink is non-accepting and cannot lie on an accepting cycle.
-        # Consequently, every edge in this lasso belongs to the original NBA.
         ordered_alphabet = sorted(nba.alphabet, key=lambda value: tuple(sorted(value)))
         witness = tuple(
             next(symbol for symbol in ordered_alphabet if target in nba.post(source, symbol))
@@ -252,7 +263,11 @@ def check_ltl_validity(
     """
     iteration = 0
 
-    def report(stage, message, detail=None):
+    def report(
+        stage: _ValidityStage,
+        message: str,
+        detail: LTLFormula | LTLSatisfiabilityStep | None = None,
+    ) -> None:
         nonlocal iteration
         if on_step is not None:
             on_step(LTLValidityStep(iteration, stage, message, detail))
