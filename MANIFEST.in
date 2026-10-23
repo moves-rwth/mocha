@@ -1,1 +1,3 @@
 include CHANGELOG.md
+include CONTRIBUTING.md
+include examples/typed_usage.py

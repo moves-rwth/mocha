@@ -516,7 +516,10 @@ through `format_state`, `format_action`, and `format_proposition` callbacks.
 
 ## Development
 
-Run the test suite from the repository root:
+See the [contributor guide](https://github.com/moves-rwth/mocha/blob/main/CONTRIBUTING.md)
+for environment setup, tests, the typing example, and release-artifact checks.
+After setting up the development environment, run the test suite from the
+repository root:
 
 ```bash
 PYTHONPATH=src python -m unittest discover -s tests
