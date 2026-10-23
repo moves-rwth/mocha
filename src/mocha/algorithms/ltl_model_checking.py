@@ -11,10 +11,11 @@ at the initial state's label. Failed checks return a finite prefix and cycle
 representing an infinite violating path through the original system.
 """
 
+import builtins
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
-from typing import Generic, Hashable, Literal, TypeVar
+from typing import Final, Generic, Hashable, Literal, TypeVar, cast
 
 from mocha.logic.ltl import LTLFormula, Not, propositions
 from mocha.models.automaton import NBA
@@ -27,11 +28,17 @@ from .ltl2gnba.acceptance import AcceptanceStep
 from .ltl2gnba.elementary_set_enumeration import ElementaryTableStep
 from .ltl2gnba.initial_states import InitialStateStep
 from .ltl2gnba.pipeline import LTLToGNBAResult, LTLToGNBAStep, ltl_to_gnba
-from .ltl2gnba.transitions import TransitionRelationStep
+from .ltl2gnba.transitions import ElementarySet, TransitionRelationStep, Valuation
 from .trace import AlgorithmTrace
 
 State = TypeVar("State", bound=Hashable)
 Action = TypeVar("Action", bound=Hashable)
+NBAState = tuple[ElementarySet, int]
+_ProductState = tuple[State, NBAState]
+
+_ModelCheckingStage = Literal[
+    "negation", "translation", "nba_conversion", "product", "emptiness", "verdict",
+]
 
 
 class _SearchMarker(Enum):
@@ -40,8 +47,12 @@ class _SearchMarker(Enum):
     SINK_ACTION = "sink_action"
 
 
+_SearchState = _ProductState[State] | Literal[_SearchMarker.SINK_STATE]
+_SearchProposition = NBAState | Literal[_SearchMarker.NONACCEPTING]
+
+
 @dataclass(frozen=True)
-class LTLModelCheckingStep:
+class LTLModelCheckingStep(Generic[State]):
     """A globally numbered model-checking event with optional nested details.
 
     ``iteration`` counts from zero across all stages, and ``message`` explains
@@ -53,9 +64,9 @@ class LTLModelCheckingStep:
     """
 
     iteration: int
-    stage: Literal["negation", "translation", "nba_conversion", "product", "emptiness", "verdict"]
+    stage: _ModelCheckingStage
     message: str
-    detail: LTLFormula | LTLToGNBAStep | PersistenceStep | None = None
+    detail: LTLFormula | LTLToGNBAStep | PersistenceStep[_SearchState[State]] | None = None
 
 
 @dataclass(frozen=True)
@@ -98,29 +109,31 @@ class LTLModelCheckingResult(Generic[State]):
     property: LTLFormula
     negated_formula: LTLFormula
     translation: LTLToGNBAResult
-    nba: NBA
-    product: TransitionSystem
-    search_product: TransitionSystem
-    emptiness: PersistenceResult
+    nba: NBA[NBAState, Valuation]
+    product: TransitionSystem[_ProductState[State], Hashable, NBAState]
+    search_product: TransitionSystem[_SearchState[State], Hashable, _SearchProposition]
+    emptiness: PersistenceResult[_SearchState[State]]
     counterexample: tuple[State, ...] | None
     loop_start: int | None
 
-    @property
-    def product_counterexample(self) -> tuple | None:
+    @builtins.property
+    def product_counterexample(self) -> tuple[_ProductState[State], ...] | None:
         """The accepting product lasso before projection, or ``None`` if satisfied.
 
         Each state pairs an original system state with an NBA state. The last
         entry repeats the product state at ``loop_start``; projecting the first
-    component gives ``counterexample`` with the same cycle boundary.
+        component gives ``counterexample`` with the same cycle boundary.
         """
-        return self.emptiness.counterexample
+        # The non-accepting sink only loops on itself and cannot occur in a
+        # violating persistence lasso, so every entry is an ordinary product state.
+        return cast(tuple[_ProductState[State], ...] | None, self.emptiness.counterexample)
 
 
 def check_ltl(
     system: TransitionSystem[State, Action, str],
     property: LTLFormula,
     *,
-    on_step: Callable[[LTLModelCheckingStep], None] | None = None,
+    on_step: Callable[[LTLModelCheckingStep[State]], None] | None = None,
 ) -> LTLModelCheckingResult[State]:
     """Check whether every infinite run of ``system`` satisfies ``property``.
 
@@ -172,7 +185,11 @@ def check_ltl(
 
     iteration = 0
 
-    def report(stage, message, detail=None):
+    def report(
+        stage: _ModelCheckingStage,
+        message: str,
+        detail: LTLFormula | LTLToGNBAStep | PersistenceStep[_SearchState[State]] | None = None,
+    ) -> None:
         nonlocal iteration
         if on_step is not None:
             on_step(LTLModelCheckingStep(iteration, stage, message, detail))
@@ -205,7 +222,7 @@ def check_ltl(
     )
     nba = gnba_to_nba(translation.automaton)
     report("nba_conversion", f"Convert the GNBA to an NBA with {len(nba.states)} states.")
-    projected = TransitionSystem.from_components(
+    projected = TransitionSystem[State, Hashable, str].from_components(
         states=system.states,
         actions=system.actions,
         transitions=system.transitions(),
@@ -222,10 +239,12 @@ def check_ltl(
     # non-accepting product states; a violation is an accepting cycle. The
     # standard product can have dead ends even when the original TS is total.
     # Complete those ends with a non-accepting sink for the persistence search.
-    nonaccepting = _SearchMarker.NONACCEPTING
-    sink = _SearchMarker.SINK_STATE
-    sink_action = _SearchMarker.SINK_ACTION
-    search_product = TransitionSystem.from_components(
+    nonaccepting: Final = _SearchMarker.NONACCEPTING
+    sink: Final = _SearchMarker.SINK_STATE
+    sink_action: Final = _SearchMarker.SINK_ACTION
+    search_product = TransitionSystem[
+        _SearchState[State], Hashable, _SearchProposition,
+    ].from_components(
         states=product.states, actions=product.actions,
         transitions=product.transitions(), initial_states=product.initial_states,
         atomic_propositions=(*product.atomic_propositions, nonaccepting),
@@ -242,7 +261,7 @@ def check_ltl(
     report("emptiness", "Mark non-accepting product states with Φ and use the persistence "
           "nested DFS to find a cycle outside Φ. Complete dead ends with a non-accepting sink.")
 
-    def describe_emptiness(step: PersistenceStep) -> str:
+    def describe_emptiness(step: PersistenceStep[_SearchState[State]]) -> str:
         if step.state is None:
             return "Initialize persistence nested DFS on the prepared product."
         if step.state is sink:
@@ -261,9 +280,11 @@ def check_ltl(
             if on_step is not None else None
         ),
     )
+    # As in product_counterexample, the accepting lasso cannot visit the sink.
+    product_counterexample = cast(tuple[_ProductState[State], ...] | None, emptiness.counterexample)
     counterexample = (
-        tuple(state for state, _ in emptiness.counterexample)
-        if emptiness.counterexample is not None else None
+        tuple(state for state, _ in product_counterexample)
+        if product_counterexample is not None else None
     )
     satisfies = emptiness.satisfies
     verdict = "holds" if satisfies else "fails; the accepting product cycle gives a counterexample"
@@ -276,7 +297,7 @@ def check_ltl(
 
 def trace_check_ltl(
     system: TransitionSystem[State, Action, str], property: LTLFormula,
-) -> AlgorithmTrace[LTLModelCheckingResult[State], LTLModelCheckingStep]:
+) -> AlgorithmTrace[LTLModelCheckingResult[State], LTLModelCheckingStep[State]]:
     """Check the property and retain every construction and search event in memory.
 
     Inputs and validation requirements match ``check_ltl``. The trace's
@@ -284,7 +305,7 @@ def trace_check_ltl(
     collects the callback events in global order, retaining the detailed
     translation records and persistence DFS snapshots.
     """
-    steps: list[LTLModelCheckingStep] = []
+    steps: list[LTLModelCheckingStep[State]] = []
     result = check_ltl(system, property, on_step=steps.append)
     return AlgorithmTrace(result, tuple(steps))
 

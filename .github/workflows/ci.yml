@@ -45,6 +45,22 @@ jobs:
       - name: Run tests against the installed wheel
         run: python -I -m unittest discover -s tests -v
 
+  typecheck:
+    name: Type checking
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install type checking dependencies
+        run: python -m pip install ".[visualization,typecheck]"
+      - name: Check library types
+        run: python -m mypy
+
   base-install:
     name: Base installation (without Graphviz)
     runs-on: ubuntu-latest

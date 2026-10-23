@@ -245,11 +245,12 @@ def compute_transition_relation(
     allowed: set[StatePair] = set()
     nexts = sorted((node for node in closure if isinstance(node, Next)), key=str)
     untils = sorted((node for node in closure if isinstance(node, Until)), key=str)
+    temporal_formulas: tuple[Next | Until, ...] = (*nexts, *untils)
     for source_index, source in enumerate(states):
         name = f"B{source_index + 1}"
         remaining = all_targets
         restrictions = []
-        for node in (*nexts, *untils):
+        for node in temporal_formulas:
             required: LTLFormula | None = None
             present: bool | None = None
             if isinstance(node, Next):
