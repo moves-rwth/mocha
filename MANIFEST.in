@@ -1,4 +1,5 @@
 include CHANGELOG.md
 include CONTRIBUTING.md
+include examples/invariant_checking.py
 include examples/typed_usage.py
 include .github/scripts/smoke_base_install.py

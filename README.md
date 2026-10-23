@@ -113,6 +113,17 @@ for step in trace.steps:
 The direct algorithms also accept an `on_step` callback to stream snapshots.
 Their result and step types are exported from `mocha` and `mocha.algorithms`.
 
+For a complete invariant walkthrough, see
+[examples/invariant_checking.py](https://github.com/moves-rwth/mocha/blob/main/examples/invariant_checking.py).
+It builds a faulty mutual-exclusion model, derives the allowed states from
+their labels, explains the counterexample, and prints each invariant-checking
+step. It then removes the faulty transition and checks the invariant again.
+With MoChA installed, run it from the repository root:
+
+```bash
+python -I examples/invariant_checking.py
+```
+
 ## JSON Import and Export
 
 String-valued transition systems can be saved as versioned JSON documents:
