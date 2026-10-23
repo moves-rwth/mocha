@@ -31,6 +31,29 @@ Rendering an image also requires the [Graphviz](https://graphviz.org/)
 executables, including `dot`, to be installed and available on your `PATH`.
 Core models, algorithms, and JSON helpers work without Graphviz.
 
+### Docker
+
+Use Docker to run MoChA without installing Python or Graphviz separately.
+The image includes everything needed to run the examples and draw diagrams,
+and works on Intel/AMD computers and Apple Silicon.
+
+With Docker installed, start an interactive Python session using the latest
+nightly version:
+
+```bash
+docker run --pull always --rm -it ghcr.io/moves-rwth/mocha:nightly
+```
+
+The first run downloads the image. `--pull always` checks for an updated image
+each time you run it.
+
+Choose the version that suits your work:
+
+- `nightly`: the current development version, updated each night.
+- `latest`: the most recent stable release, available after the first stable
+  release is published.
+- A specific [release tag](https://github.com/moves-rwth/mocha/releases)
+
 ## Transition Systems
 
 A labelled transition system is defined as
