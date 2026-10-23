@@ -522,6 +522,18 @@ Run the test suite from the repository root:
 PYTHONPATH=src python -m unittest discover -s tests
 ```
 
+## Project Status and Scope
+
+MoChA is intended for teaching and small worked examples. During the `0.x`
+release series, public APIs may change between releases. Breaking changes will
+be documented in the
+[changelog](https://github.com/moves-rwth/mocha/blob/main/CHANGELOG.md).
+
+LTL automata construction explicitly enumerates combinations of formula
+choices and atomic-proposition valuations. Its time and memory requirements
+can grow exponentially as formulas grow. Trace helpers retain intermediate
+snapshots in memory, which can further increase memory use.
+
 ## License
 
 MoChA is licensed under the Mozilla Public License 2.0. See
