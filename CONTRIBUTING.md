@@ -131,6 +131,7 @@ The Graphviz executables must still be available to run the rendering tests.
 ## Submit a pull request
 
 Keep the change focused and explain the resulting behavior and how you
-checked it. Update the README and changelog when the public behavior changes.
+checked it. Update the README, relevant guides in `docs/`, and changelog when
+the public behavior changes.
 Include examples or counterexamples where they help explain an algorithm
 change. CI runs on pull requests and on pushes to `main`.
