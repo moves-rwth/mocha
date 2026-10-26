@@ -15,7 +15,7 @@ are exported from `mocha.visualisation` with the optional `visualization` extra.
 
 ## Install
 
-MoChA requires Python 3.11 or later. Install the package from a checkout:
+MoChA requires Python 3.11 or later. Install the package from PyPI:
 
 ```bash
 python -m pip install mocha-model-checking

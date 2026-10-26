@@ -7,7 +7,7 @@ the expected result, the actual result, and your Python and MoChA versions.
 
 ## Set up a development environment
 
-Use Python 3.11 or later. CI is configured to test Python 3.11 through 3.14
+Use Python 3.11 or later. CI is configured to test Python 3.11 through 3.15
 on Ubuntu. Run these commands from the repository root.
 
 On Linux or macOS:

@@ -9,7 +9,7 @@ from mocha import Automaton, AutomatonTransition, FiniteAutomaton, GNBA, NBA
 from mocha.visualisation import AcceptingStateShape, to_automaton_graphviz
 from mocha.visualisation.automaton import AcceptingStateShape as RendererAcceptingStateShape
 from mocha.visualisation.automaton import to_graphviz
-from tests.test_transition_system_visualisation import SVG, svg_groups, text_labels
+from test_transition_system_visualisation import SVG, svg_groups, text_labels
 
 
 class AutomatonGraphvizTests(unittest.TestCase):
