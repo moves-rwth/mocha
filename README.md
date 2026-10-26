@@ -15,7 +15,7 @@ are exported from `mocha.visualisation` with the optional `visualization` extra.
 
 ## Install
 
-MoChA requires Python 3.11 or later.
+MoChA requires Python 3.11 or later. Install the package from a checkout:
 
 ```bash
 python -m pip install mocha-model-checking
@@ -37,6 +37,29 @@ To install from a source checkout, run one of these commands from its root:
 python -m pip install .
 python -m pip install '.[visualization]'
 ```
+
+### Docker
+
+Use Docker to run MoChA without installing Python or Graphviz separately.
+The image uses Python 3.15 and includes everything needed to run the examples
+and draw diagrams. It works on Intel/AMD computers and Apple Silicon.
+
+With Docker installed, start an interactive Python session using the latest
+nightly version:
+
+```bash
+docker run --pull always --rm -it ghcr.io/moves-rwth/mocha:nightly
+```
+
+The first run downloads the image. `--pull always` checks for an updated image
+each time you run it.
+
+Choose the version that suits your work:
+
+- `nightly`: the current development version, updated each night.
+- `latest`: the most recent stable release, available after the first stable
+  release is published.
+- A specific [release tag](https://github.com/moves-rwth/mocha/releases)
 
 ## Transition Systems
 
@@ -106,6 +129,18 @@ trace = trace_reachability(system)
 assert trace.result == reachable
 for step in trace.steps:
     print(step.iteration, step.reachable_states)
+```
+
+Use `reduce_to_reachable(system)` to create a new transition system containing
+only reachable states and transitions between them. It preserves their labels,
+all initial states, and the declared action and proposition sets. The original
+system remains unchanged; with no initial states, the result has no states.
+
+```python
+from mocha import reduce_to_reachable
+
+reduced = reduce_to_reachable(system)
+assert reduced.states == reachable.reachable_states
 ```
 
 `trace_reachability`, `trace_invariant`, and `trace_persistence` return an
@@ -336,6 +371,65 @@ from mocha.visualisation import visualise_reachability_step
 
 graph = visualise_reachability_step(system, trace_reachability(system).steps[0])
 ```
+
+### Automata
+
+`to_automaton_graphviz` renders `Automaton`, `FiniteAutomaton`, `NBA`, and `GNBA`
+models as state diagrams. States are circles by default, incoming
+arrows identify initial states, and accepting states of finite and Büchi automata
+use squares. Pass `accepting_state_shape=AcceptingStateShape.DOUBLE_CIRCLE` to
+use double circles instead. Symbols connecting the same pair of states share
+an edge label.
+
+```python
+from mocha import FiniteAutomaton
+from mocha.visualisation import AcceptingStateShape, to_automaton_graphviz
+
+automaton = FiniteAutomaton.from_components(
+    states={"q0", "q1"}, alphabet={"a", "b"},
+    transitions={
+        ("q0", "a", "q0"), ("q0", "b", "q1"), ("q1", "b", "q1"),
+    },
+    initial_states={"q0"}, accepting_states={"q1"},
+)
+graph = to_automaton_graphviz(
+    automaton, accepting_state_shape=AcceptingStateShape.SQUARE,
+)
+graph.render("automaton", format="svg", cleanup=True)
+```
+
+For generalized Büchi automata, bracketed labels such as `[F1, F2]` mark
+acceptance-set memberships directly below the state name inside the circle.
+The diagram uses no colours, legend, or set definitions. An accepting run must
+visit every set infinitely often. An SVG graph tooltip identifies empty sets
+that cannot be marked on any state, or an empty family with no acceptance
+requirements. Set indices are assigned for display; the model stores an
+unordered family.
+
+Use `format_state` and `format_symbol` to display non-string values, including
+product states and sets of propositions. For example, an automaton over
+proposition sets can use:
+
+```python
+from mocha import NBA
+
+nba = NBA.from_components(
+    states={0}, alphabet={frozenset(), frozenset({"p"})},
+    transitions={(0, frozenset(), 0), (0, frozenset({"p"}), 0)},
+    initial_states={0}, accepting_states={0},
+)
+graph = to_automaton_graphviz(
+    nba,
+    format_state=lambda state: str(state),
+    format_symbol=lambda symbol: "{" + ", ".join(sorted(symbol)) + "}",
+)
+```
+
+Labels are literal text. `highlighted_states` and `highlighted_transitions`
+(iterables of `AutomatonTransition` values) draw thicker outlines and edges;
+unknown selections raise `ValueError`. All the DOT, image, and notebook output
+workflows above apply. The renderer is also available as
+`mocha.visualisation.automaton.to_graphviz`.
 
 ### Persistence Counterexamples
 

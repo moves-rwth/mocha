@@ -15,6 +15,7 @@ __all__ = [
     "ReachabilityResult",
     "ReachabilityStep",
     "compute_reachable_states",
+    "reduce_to_reachable",
     "trace_reachability",
 ]
 
@@ -99,6 +100,20 @@ def compute_reachable_states(
     return ReachabilityResult(
         reachable_states=frozenset(reachable_states),
     )
+
+
+def reduce_to_reachable(
+        ts: TransitionSystem[State, Action, AtomicProposition],
+) -> TransitionSystem[State, Action, AtomicProposition]:
+    """Return a new system containing only states reachable from initial states.
+
+    Retain their labels, initial-state membership, and transitions between
+    them. All declared actions and atomic propositions are preserved.
+    With no initial states, the result has no states or transitions.
+    The input system is not modified.
+    """
+    reachable = compute_reachable_states(ts).reachable_states
+    return ts.induced_subsystem(reachable)
 
 
 def trace_reachability(

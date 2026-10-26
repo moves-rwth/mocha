@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
@@ -14,6 +15,36 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  docker:
+    name: Container (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - name: Build container
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/${{ matrix.arch }}
+          load: true
+          tags: mocha:ci
+          cache-from: type=gha,scope=mocha-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=mocha-${{ matrix.arch }}
+      - name: Check installed package and Graphviz in the container
+        run: |
+          docker run --rm \
+            --mount "type=bind,src=$GITHUB_WORKSPACE/.github/scripts/smoke_container.py,dst=/tmp/smoke_container.py,readonly" \
+            mocha:ci python -I /tmp/smoke_container.py
+
   test:
     name: Tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
@@ -21,7 +52,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", "3.12", "3.13", "3.14"]
+        python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -53,7 +84,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.14"
+          python-version: "3.15"
           cache: pip
           cache-dependency-path: pyproject.toml
       - name: Install type checking dependencies
@@ -69,7 +100,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.14"
+          python-version: "3.15"
           cache: pip
           cache-dependency-path: pyproject.toml
       - name: Install build frontend
@@ -91,7 +122,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.14"
+          python-version: "3.15"
           cache: pip
           cache-dependency-path: pyproject.toml
       - name: Install build and metadata validation tools
