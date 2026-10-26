@@ -48,6 +48,67 @@ class TransitionSystemTests(unittest.TestCase):
         self.assertTrue(system.has_transition("idle", "start", "running"))
         self.assertTrue(system.has_transition("running", "finish", "done"))
 
+    def test_induced_subsystem_restricts_states_transitions_labels_and_initial_states(self) -> None:
+        self.system.set_initial("done")
+        self.system.add_transition("idle", "start", "running")
+        self.system.add_transition("running", "wait", "running")
+        self.system.add_transition("running", "finish", "done")
+        self.system.add_transition("done", "reset", "idle")
+        self.system.add_action("unused")
+        self.system.add_atomic_proposition("unlabelled")
+
+        subsystem = self.system.induced_subsystem(iter(("idle", "running", "idle")))
+
+        self.assertEqual(subsystem.states, frozenset({"idle", "running"}))
+        self.assertEqual(subsystem.initial_states, frozenset({"idle"}))
+        self.assertEqual(subsystem.labels("idle"), frozenset({"ready"}))
+        self.assertEqual(subsystem.labels("running"), frozenset({"busy"}))
+        self.assertEqual(set(subsystem.transitions()), {
+            ("idle", "start", "running"),
+            ("running", "wait", "running"),
+        })
+        self.assertEqual(subsystem.actions, self.system.actions)
+        self.assertEqual(subsystem.atomic_propositions, self.system.atomic_propositions)
+
+    def test_induced_subsystem_accepts_an_empty_selection(self) -> None:
+        self.system.add_transition("idle", "start", "running")
+
+        subsystem = self.system.induced_subsystem(())
+
+        self.assertEqual(subsystem.states, frozenset())
+        self.assertEqual(subsystem.initial_states, frozenset())
+        self.assertEqual(set(subsystem.transitions()), set())
+        self.assertEqual(subsystem.actions, self.system.actions)
+        self.assertEqual(subsystem.atomic_propositions, self.system.atomic_propositions)
+
+    def test_induced_subsystem_rejects_unknown_states(self) -> None:
+        with self.assertRaisesRegex(ValueError, "Unknown states.*missing"):
+            self.system.induced_subsystem(("idle", "missing"))
+
+    def test_induced_subsystem_is_independent_of_the_original(self) -> None:
+        self.system.add_transition("idle", "start", "running")
+
+        subsystem = self.system.induced_subsystem(self.system.states)
+
+        self.assertIsNot(subsystem, self.system)
+        self.assertEqual(subsystem.states, self.system.states)
+        self.assertEqual(set(subsystem.transitions()), set(self.system.transitions()))
+        subsystem.remove_transition("idle", "start", "running")
+        subsystem.add_label("idle", "changed")
+        subsystem.set_initial("idle", False)
+        subsystem.add_action("new")
+        subsystem.remove_state("done")
+
+        self.assertTrue(self.system.has_transition("idle", "start", "running"))
+        self.assertEqual(self.system.labels("idle"), frozenset({"ready"}))
+        self.assertNotIn("changed", self.system.atomic_propositions)
+        self.assertEqual(self.system.initial_states, frozenset({"idle"}))
+        self.assertNotIn("new", self.system.actions)
+        self.assertIn("done", self.system.states)
+
+        self.system.remove_label("running", "busy")
+        self.assertEqual(subsystem.labels("running"), frozenset({"busy"}))
+
     def test_from_components_rejects_unknown_initial_states_actions_and_labels(self) -> None:
         with self.assertRaisesRegex(ValueError, "Unknown initial states"):
             TransitionSystem.from_components(
