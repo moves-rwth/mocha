@@ -125,6 +125,18 @@ for step in trace.steps:
     print(step.iteration, step.reachable_states)
 ```
 
+Use `reduce_to_reachable(system)` to create a new transition system containing
+only reachable states and transitions between them. It preserves their labels,
+all initial states, and the declared action and proposition sets. The original
+system remains unchanged; with no initial states, the result has no states.
+
+```python
+from mocha import reduce_to_reachable
+
+reduced = reduce_to_reachable(system)
+assert reduced.states == reachable.reachable_states
+```
+
 `trace_reachability`, `trace_invariant`, and `trace_persistence` return an
 `AlgorithmTrace` with the final `result` and an immutable tuple of `steps`.
 The direct algorithms also accept an `on_step` callback to stream snapshots.
