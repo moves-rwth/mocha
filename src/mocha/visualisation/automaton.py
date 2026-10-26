@@ -6,6 +6,7 @@ generalized Büchi automata, with optional state and transition highlighting.
 
 from collections import defaultdict
 from collections.abc import Callable, Iterable
+from enum import Enum
 
 from graphviz import Digraph, escape
 
@@ -19,7 +20,14 @@ from mocha.models.automaton import (
     Symbol,
 )
 
-__all__ = ["to_graphviz"]
+__all__ = ["AcceptingStateShape", "to_graphviz"]
+
+
+class AcceptingStateShape(Enum):
+    """Available shapes for accepting states of finite and Büchi automata."""
+
+    SQUARE = "square"
+    DOUBLE_CIRCLE = "doublecircle"
 
 
 def to_graphviz(
@@ -27,6 +35,7 @@ def to_graphviz(
         *,
         format_state: Callable[[AutomatonState], str] = str,
         format_symbol: Callable[[Symbol], str] = str,
+        accepting_state_shape: AcceptingStateShape = AcceptingStateShape.SQUARE,
         highlighted_states: Iterable[AutomatonState] = (),
         highlighted_transitions: Iterable[
             AutomatonTransition[AutomatonState, Symbol]
@@ -34,9 +43,10 @@ def to_graphviz(
 ) -> Digraph:
     """Build a Graphviz state diagram of an automaton.
 
-    Each state is a circle, with an incoming arrow from an invisible marker for
-    each initial state. Finite and ordinary Büchi automata use double circles
-    for accepting states. Generalized Büchi automata display memberships such
+    States are circles by default, with an incoming arrow from an invisible
+    marker for each initial state. Finite and ordinary Büchi automata use
+    ``accepting_state_shape`` (default: squares) for accepting states.
+    Generalized Büchi automata display memberships such
     as ``[F1, F2]`` beneath the state name inside the circle. These one-based
     acceptance-set indices are assigned for the diagram from the ordered state
     memberships; they are not identifiers stored in the model. A graph tooltip
@@ -58,6 +68,10 @@ def to_graphviz(
             ``FiniteAutomaton``, ``NBA``, and ``GNBA`` instances.
         format_state: Convert a state into its displayed name.
         format_symbol: Convert an alphabet symbol into its edge-label text.
+        accepting_state_shape: Shape for accepting states of finite and ordinary
+            Büchi automata: ``AcceptingStateShape.SQUARE`` (the default) or
+            ``AcceptingStateShape.DOUBLE_CIRCLE``. Does not affect generalized
+            Büchi memberships.
         highlighted_states: States to draw with a thicker outline.
         highlighted_transitions: Transitions to draw with a thicker edge,
             separately from ordinary transitions between the same states.
@@ -123,7 +137,7 @@ def to_graphviz(
     for state in states:
         attributes = {}
         if state in accepting_states:
-            attributes["shape"] = "doublecircle"
+            attributes["shape"] = accepting_state_shape.value
         if state in highlighted_states:
             attributes["penwidth"] = "3"
         label = state_labels[state]

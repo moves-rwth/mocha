@@ -6,7 +6,8 @@ import sys
 import unittest
 
 from mocha import Automaton, AutomatonTransition, FiniteAutomaton, GNBA, NBA
-from mocha.visualisation import to_automaton_graphviz
+from mocha.visualisation import AcceptingStateShape, to_automaton_graphviz
+from mocha.visualisation.automaton import AcceptingStateShape as RendererAcceptingStateShape
 from mocha.visualisation.automaton import to_graphviz
 from tests.test_transition_system_visualisation import SVG, svg_groups, text_labels
 
@@ -14,6 +15,7 @@ from tests.test_transition_system_visualisation import SVG, svg_groups, text_lab
 class AutomatonGraphvizTests(unittest.TestCase):
     def test_public_alias_and_acceptance_styles(self):
         self.assertIs(to_automaton_graphviz, to_graphviz)
+        self.assertIs(AcceptingStateShape, RendererAcceptingStateShape)
         for model in (Automaton, FiniteAutomaton, NBA):
             with self.subTest(model=model.__name__):
                 automaton = model.from_components(
@@ -34,7 +36,18 @@ class AutomatonGraphvizTests(unittest.TestCase):
                 self.assertIn("state_2 [label=unreachable]", source)
                 self.assertIn("__initial_0 -> state_0", source)
                 self.assertIn("__initial_1 -> state_1", source)
-                self.assertEqual(source.count("doublecircle"), int(model != Automaton))
+                self.assertEqual(source.count("shape=square"), int(model != Automaton))
+                for shape in AcceptingStateShape:
+                    styled = to_graphviz(
+                        automaton, accepting_state_shape=shape,
+                        highlighted_states={"q1"},
+                    ).source
+                    expected = (
+                        f"state_1 [label=q1 penwidth=3 shape={shape.value}]"
+                        if model != Automaton else "state_1 [label=q1 penwidth=3]"
+                    )
+                    self.assertIn(expected, styled)
+                    self.assertIn("state_0 [label=q0]", styled)
 
     def test_highlighting_preserves_acceptance_and_parallel_symbols(self):
         automaton = NBA.from_components(
@@ -46,7 +59,7 @@ class AutomatonGraphvizTests(unittest.TestCase):
             automaton, highlighted_states=iter(["q"]),
             highlighted_transitions=iter([AutomatonTransition("q", "b", "q")]),
         ).source
-        self.assertIn("state_0 [label=q penwidth=3 shape=doublecircle]", source)
+        self.assertIn("state_0 [label=q penwidth=3 shape=square]", source)
         self.assertIn('state_0 -> state_0 [label="a, c"]', source)
         self.assertIn("state_0 -> state_0 [label=b penwidth=3]", source)
 
@@ -78,7 +91,7 @@ class AutomatonGraphvizTests(unittest.TestCase):
         self.assertNotIn("F1 =", source)
         self.assertNotIn("{q0, q1}", source)
         self.assertNotIn("{q1, q2}", source)
-        self.assertNotIn("doublecircle", source)
+        self.assertNotIn("shape=square", source)
         automaton.remove_accepting_set(set())
         automaton.remove_accepting_set({"q0", "q1"})
         automaton.remove_accepting_set({"q1", "q2"})
@@ -93,10 +106,10 @@ class AutomatonGraphvizTests(unittest.TestCase):
                 source = to_graphviz(model()).source
                 self.assertNotIn("state_", source)
                 self.assertNotIn("__initial_", source)
-                self.assertNotIn("doublecircle", source)
+                self.assertNotIn("shape=square", source)
         for model in (FiniteAutomaton, NBA):
             automaton = model.from_components(states={"q"}, alphabet=(), transitions=())
-            self.assertNotIn("doublecircle", to_graphviz(automaton).source)
+            self.assertNotIn("shape=square", to_graphviz(automaton).source)
 
     def test_non_string_values_and_deterministic_ordering(self):
         # These state values cannot be directly sorted against each other.
@@ -162,7 +175,15 @@ class AutomatonRenderingTests(unittest.TestCase):
                     if text_labels(node)
                 }
                 self.assertEqual(len(nodes["q0"].findall(f"{SVG}ellipse")), 1)
-                self.assertEqual(len(nodes["q1"].findall(f"{SVG}ellipse")), 2)
+                self.assertEqual(len(nodes["q1"].findall(f"{SVG}ellipse")), 0)
+                polygon = nodes["q1"].find(f"{SVG}polygon")
+                self.assertIsNotNone(polygon)
+                points = [
+                    tuple(map(float, point.split(",")))
+                    for point in polygon.get("points").split()
+                ]
+                xs, ys = zip(*points)
+                self.assertAlmostEqual(max(xs) - min(xs), max(ys) - min(ys))
                 edges = svg_groups(graph, "edge")
                 self.assertEqual(len(edges), 4)
                 self.assertEqual(sum(not text_labels(edge) for edge in edges), 2)

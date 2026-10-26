@@ -488,13 +488,15 @@ graph = visualise_reachability_step(system, trace_reachability(system).steps[0])
 ### Automata
 
 `to_automaton_graphviz` renders `Automaton`, `FiniteAutomaton`, `NBA`, and `GNBA`
-models as left-to-right state diagrams. States are circles, incoming arrows
-identify initial states, and accepting states of finite and Büchi automata use
-double circles. Symbols connecting the same pair of states share an edge label.
+models as state diagrams. States are circles by default, incoming
+arrows identify initial states, and accepting states of finite and Büchi automata
+use squares. Pass `accepting_state_shape=AcceptingStateShape.DOUBLE_CIRCLE` to
+use double circles instead. Symbols connecting the same pair of states share
+an edge label.
 
 ```python
 from mocha import FiniteAutomaton
-from mocha.visualisation import to_automaton_graphviz
+from mocha.visualisation import AcceptingStateShape, to_automaton_graphviz
 
 automaton = FiniteAutomaton.from_components(
     states={"q0", "q1"}, alphabet={"a", "b"},
@@ -503,7 +505,9 @@ automaton = FiniteAutomaton.from_components(
     },
     initial_states={"q0"}, accepting_states={"q1"},
 )
-graph = to_automaton_graphviz(automaton)
+graph = to_automaton_graphviz(
+    automaton, accepting_state_shape=AcceptingStateShape.SQUARE,
+)
 graph.render("automaton", format="svg", cleanup=True)
 ```
 

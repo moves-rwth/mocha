@@ -5,6 +5,7 @@ from typing import Any
 from .overlay import TransitionSystemOverlay
 
 __all__ = [
+    "AcceptingStateShape",
     "TransitionSystemOverlay",
     "to_automaton_graphviz",
     "to_graphviz",
@@ -19,6 +20,10 @@ __all__ = [
 
 def __getattr__(name: str) -> Any:
     """Load Graphviz-dependent rendering helpers only when they are requested."""
+    if name == "AcceptingStateShape":
+        from .automaton import AcceptingStateShape
+
+        return AcceptingStateShape
     if name == "to_automaton_graphviz":
         from .automaton import to_graphviz as to_automaton_graphviz
 
