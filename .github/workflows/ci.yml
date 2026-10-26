@@ -52,7 +52,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", "3.14", "3.15"]
+        python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -64,12 +64,17 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes graphviz
-      - name: Install package with visualisation support
+      - name: Install build frontend
+        run: python -m pip install --upgrade build
+      - name: Build wheel from source distribution
+        run: python -m build
+      - name: Install wheel with visualisation support
+        shell: bash
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install ".[visualization]"
-      - name: Run tests against the installed package
-        run: python -m unittest discover -s tests -v
+          wheels=(dist/*.whl)
+          python -m pip install "${wheels[0]}[visualization]"
+      - name: Run tests against the installed wheel
+        run: python -I -m unittest discover -s tests -v
 
   typecheck:
     name: Type checking
@@ -98,10 +103,14 @@ jobs:
           python-version: "3.15"
           cache: pip
           cache-dependency-path: pyproject.toml
-      - name: Install base package in a fresh environment
+      - name: Install build frontend
+        run: python -m pip install --upgrade build
+      - name: Build wheel from source distribution
+        run: python -m build
+      - name: Install base wheel in a fresh environment
         run: |
           python -m venv "$RUNNER_TEMP/mocha-base"
-          "$RUNNER_TEMP/mocha-base/bin/python" -m pip install .
+          "$RUNNER_TEMP/mocha-base/bin/python" -m pip install dist/*.whl
       - name: Check imports and core algorithms without the Graphviz package
         run: '"$RUNNER_TEMP/mocha-base/bin/python" -I .github/scripts/smoke_base_install.py'
 
@@ -116,7 +125,9 @@ jobs:
           python-version: "3.15"
           cache: pip
           cache-dependency-path: pyproject.toml
-      - name: Install build frontend
-        run: python -m pip install --upgrade build
+      - name: Install build and metadata validation tools
+        run: python -m pip install --upgrade build twine
       - name: Build wheel and source distribution
         run: python -m build
+      - name: Validate distribution metadata
+        run: python -m twine check --strict dist/*
