@@ -15,7 +15,8 @@ are exported from `mocha.visualisation` with the optional `visualization` extra.
 
 ## Install
 
-MoChA requires Python 3.11 or later. Install the package from a checkout:
+MoChA requires Python 3.11 or later. Install the package
+from a checkout:
 
 ```bash
 python -m pip install .
@@ -34,8 +35,8 @@ Core models, algorithms, and JSON helpers work without Graphviz.
 ### Docker
 
 Use Docker to run MoChA without installing Python or Graphviz separately.
-The image includes everything needed to run the examples and draw diagrams,
-and works on Intel/AMD computers and Apple Silicon.
+The image uses Python 3.15 and includes everything needed to run the examples
+and draw diagrams. It works on Intel/AMD computers and Apple Silicon.
 
 With Docker installed, start an interactive Python session using the latest
 nightly version:
