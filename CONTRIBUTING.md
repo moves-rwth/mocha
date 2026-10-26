@@ -128,6 +128,46 @@ done
 import path. The fresh environment therefore exercises the installed wheel.
 The Graphviz executables must still be available to run the rendering tests.
 
+## Publish a release
+
+The `Publish Python package` workflow publishes the wheel and source archive
+to PyPI when a GitHub release is published. It first runs the full CI workflow,
+checks that the release tag matches the version in `pyproject.toml`, builds
+the distributions, and validates their metadata. Publishing uses
+[PyPI Trusted Publishing](https://docs.pypi.org/trusted-publishers/using-a-publisher/)
+with the GitHub environment `pypi`.
+
+Before the first release:
+
+1. Create a GitHub environment named `pypi` in `moves-rwth/mocha`.
+2. On PyPI, configure a GitHub Trusted Publisher for `mocha-model-checking`
+   with owner `moves-rwth`, repository `mocha`, workflow filename
+   `pypi-publish.yml`, and environment `pypi`. If the project does not exist
+   yet, use a
+   [pending publisher](https://docs.pypi.org/trusted-publishers/creating-a-project-through-oidc/).
+   This setup uses no PyPI API token.
+
+For each release:
+
+1. Update the version in `pyproject.toml` and the entry in `CHANGELOG.md`.
+2. Complete the release-artifact checks above and merge the release changes
+   into `main`. Confirm that CI passes for the intended release commit.
+3. Create a GitHub release for that commit, using a tag such as `v0.1.0`
+   (a bare `0.1.0` is also accepted). Use the changelog entry as the release
+   notes, then publish the release to start the publication workflows.
+4. Check that both `Publish Python package` and `Publish container` succeed.
+   Confirm that the new version can be installed from PyPI and that the
+   release tag is available at `ghcr.io/moves-rwth/mocha`.
+
+Container releases use the GitHub release tag verbatim. A release marked as a
+prerelease does not update the container's `latest` tag; it still triggers
+Python package publication using the version declared in `pyproject.toml`.
+
+For a trial release before `0.1.0`, use version `0.1.0rc1` in
+`pyproject.toml`, tag the GitHub release `v0.1.0rc1`, and select **Set as a
+pre-release**. After publication, install that candidate with
+`python -m pip install 'mocha-model-checking==0.1.0rc1'`.
+
 ## Submit a pull request
 
 Keep the change focused and explain the resulting behavior and how you

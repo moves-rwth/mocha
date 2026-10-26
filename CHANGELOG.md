@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.1.0
+## 0.1.0rc1
 
-Initial release of MoChA, a teaching library for model checking.
+First release candidate of MoChA, a teaching library for model checking.
 
 - Labelled transition systems and finite, Büchi, and generalized Büchi automata.
 - Reachability, invariant, persistence, and LTL model checking.
