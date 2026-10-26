@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1
-FROM python:3.14-slim-bookworm AS builder
+FROM python:3.15-slim-bookworm AS builder
 
 WORKDIR /build
 COPY pyproject.toml README.md LICENCE ./
 COPY src ./src
 RUN python -m pip wheel --no-cache-dir --wheel-dir /wheels '.[visualization]'
 
-FROM python:3.14-slim-bookworm
+FROM python:3.15-slim-bookworm
 
 LABEL org.opencontainers.image.source="https://github.com/moves-rwth/mocha" \
       org.opencontainers.image.description="MoChA model checking library with Graphviz" \
