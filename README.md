@@ -484,6 +484,61 @@ from mocha.visualisation import visualise_reachability_step
 graph = visualise_reachability_step(system, trace_reachability(system).steps[0])
 ```
 
+### Automata
+
+`to_automaton_graphviz` renders `Automaton`, `FiniteAutomaton`, `NBA`, and `GNBA`
+models as left-to-right state diagrams. States are circles, incoming arrows
+identify initial states, and accepting states of finite and Büchi automata use
+double circles. Symbols connecting the same pair of states share an edge label.
+
+```python
+from mocha import FiniteAutomaton
+from mocha.visualisation import to_automaton_graphviz
+
+automaton = FiniteAutomaton.from_components(
+    states={"q0", "q1"}, alphabet={"a", "b"},
+    transitions={
+        ("q0", "a", "q0"), ("q0", "b", "q1"), ("q1", "b", "q1"),
+    },
+    initial_states={"q0"}, accepting_states={"q1"},
+)
+graph = to_automaton_graphviz(automaton)
+graph.render("automaton", format="svg", cleanup=True)
+```
+
+For generalized Büchi automata, bracketed labels such as `[F1, F2]` mark
+acceptance-set memberships directly below the state name inside the circle.
+The diagram uses no colours, legend, or set definitions. An accepting run must
+visit every set infinitely often. An SVG graph tooltip identifies empty sets
+that cannot be marked on any state, or an empty family with no acceptance
+requirements. Set indices are assigned for display; the model stores an
+unordered family.
+
+Use `format_state` and `format_symbol` to display non-string values, including
+product states and sets of propositions. For example, an automaton over
+proposition sets can use:
+
+```python
+from mocha import NBA
+
+nba = NBA.from_components(
+    states={0}, alphabet={frozenset(), frozenset({"p"})},
+    transitions={(0, frozenset(), 0), (0, frozenset({"p"}), 0)},
+    initial_states={0}, accepting_states={0},
+)
+graph = to_automaton_graphviz(
+    nba,
+    format_state=lambda state: str(state),
+    format_symbol=lambda symbol: "{" + ", ".join(sorted(symbol)) + "}",
+)
+```
+
+Labels are literal text. `highlighted_states` and `highlighted_transitions`
+(iterables of `AutomatonTransition` values) draw thicker outlines and edges;
+unknown selections raise `ValueError`. All the DOT, image, and notebook output
+workflows above apply. The renderer is also available as
+`mocha.visualisation.automaton.to_graphviz`.
+
 ### Persistence Counterexamples
 
 `check_persistence(system, proposition)` checks whether every infinite run

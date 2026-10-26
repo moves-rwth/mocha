@@ -1,4 +1,4 @@
-"""Graphviz visualisation helpers for transition systems."""
+"""Graphviz visualisation helpers for transition systems and automata."""
 
 from typing import Any
 
@@ -6,6 +6,7 @@ from .overlay import TransitionSystemOverlay
 
 __all__ = [
     "TransitionSystemOverlay",
+    "to_automaton_graphviz",
     "to_graphviz",
     "to_lasso_graphviz",
     "visualise_invariant_step",
@@ -18,6 +19,10 @@ __all__ = [
 
 def __getattr__(name: str) -> Any:
     """Load Graphviz-dependent rendering helpers only when they are requested."""
+    if name == "to_automaton_graphviz":
+        from .automaton import to_graphviz as to_automaton_graphviz
+
+        return to_automaton_graphviz
     if name in {"to_graphviz", "to_lasso_graphviz", "visualise_step"}:
         from .transition_system import to_graphviz, to_lasso_graphviz, visualise_step
 
