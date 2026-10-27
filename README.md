@@ -65,6 +65,8 @@ return to the terminal, and press **Ctrl+C**.
 
 The mounted directory appears as `/work` in the container. Notebooks and
 diagrams saved there remain on your computer after the container stops.
+On Linux, the mounted directory must be writable by UID 1000, the container's
+user.
 
 For an interactive Python prompt, run:
 
@@ -77,7 +79,7 @@ To run a script from your current directory:
 ```bash
 docker run --pull always --rm \
   --mount "type=bind,src=$PWD,dst=/work" \
-  ghcr.io/moves-rwth/mocha:nightly python -I my_script.py
+  ghcr.io/moves-rwth/mocha:nightly python my_script.py
 ```
 
 Choose the version that suits your work:
