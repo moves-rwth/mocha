@@ -40,19 +40,45 @@ python -m pip install '.[visualization]'
 
 ### Docker
 
-Use Docker to run MoChA without installing Python or Graphviz separately.
-The image uses Python 3.15 and includes everything needed to run the examples
-and draw diagrams. It works on Intel/AMD computers and Apple Silicon.
+Use Docker to run MoChA in JupyterLab without installing Python or Graphviz
+separately. The image includes Python 3.15, a Python notebook kernel, and
+Graphviz for drawing diagrams. It works on Intel/AMD computers and Apple
+Silicon.
 
-With Docker installed, start an interactive Python session using the latest
-nightly version:
+With Docker installed, start JupyterLab using the latest nightly version.
+Run this command from the directory where you want to keep your notebooks:
 
 ```bash
-docker run --pull always --rm -it ghcr.io/moves-rwth/mocha:nightly
+docker run --pull always --rm -it \
+  -p 127.0.0.1:8888:8888 \
+  --mount "type=bind,src=$PWD,dst=/work" \
+  ghcr.io/moves-rwth/mocha:nightly
 ```
 
 The first run downloads the image. `--pull always` checks for an updated image
-each time you run it.
+each time you run it. When **Starting MoChA with JupyterLab** appears, allow a
+few seconds for startup, then open the browser link printed below it. The link
+includes your login token and opens JupyterLab directly.
+
+Keep the terminal open while you work. To stop JupyterLab, save your notebook,
+return to the terminal, and press **Ctrl+C**.
+
+The mounted directory appears as `/work` in the container. Notebooks and
+diagrams saved there remain on your computer after the container stops.
+
+For an interactive Python prompt, run:
+
+```bash
+docker run --pull always --rm -it ghcr.io/moves-rwth/mocha:nightly python
+```
+
+To run a script from your current directory:
+
+```bash
+docker run --pull always --rm \
+  --mount "type=bind,src=$PWD,dst=/work" \
+  ghcr.io/moves-rwth/mocha:nightly python -I my_script.py
+```
 
 Choose the version that suits your work:
 

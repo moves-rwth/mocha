@@ -44,6 +44,16 @@ jobs:
           docker run --rm \
             --mount "type=bind,src=$GITHUB_WORKSPACE/.github/scripts/smoke_container.py,dst=/tmp/smoke_container.py,readonly" \
             mocha:ci python -I /tmp/smoke_container.py
+      - name: Start JupyterLab with the image's default command
+        run: |
+          docker run --detach --name mocha-jupyter \
+            --mount "type=bind,src=$GITHUB_WORKSPACE/.github/scripts/smoke_jupyter.py,dst=/tmp/smoke_jupyter.py,readonly" \
+            mocha:ci
+      - name: Check JupyterLab and execute a Python notebook kernel
+        run: docker exec mocha-jupyter python -I /tmp/smoke_jupyter.py
+      - name: Stop JupyterLab
+        if: always()
+        run: docker rm --force mocha-jupyter
 
   test:
     name: Tests (Python ${{ matrix.python-version }})
