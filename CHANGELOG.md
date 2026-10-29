@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- `compute_reachable_states` now returns `frozenset[State]` directly, and
+  `trace_reachability(...).result` contains that same reachable set.
+- Removed `ReachabilityResult` from the public API. Replace
+  `compute_reachable_states(system).reachable_states` with
+  `compute_reachable_states(system)`. `ReachabilityStep` still exposes
+  `iteration` and `reachable_states` for progress snapshots.
+
 ## 0.1.0
 
 First stable release of MoChA, a teaching library for model checking.
