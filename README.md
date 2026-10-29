@@ -16,21 +16,79 @@ are exported from `mocha.visualisation` with the optional `visualization` extra.
 
 ## Install
 
-MoChA requires Python 3.11 or later. Install the package from a checkout:
+MoChA requires Python 3.11 or later. Install the package from PyPI:
+
+```bash
+python -m pip install mocha-model-checking
+```
+
+For the optional visualisation helpers:
+
+```bash
+python -m pip install 'mocha-model-checking[visualization]'
+```
+
+Rendering images also requires the [Graphviz](https://graphviz.org/)
+executables, including `dot`, to be installed and available on your `PATH`.
+Core models, algorithms, and JSON helpers work without Graphviz.
+
+To install from a source checkout, run one of these commands from its root:
 
 ```bash
 python -m pip install .
-```
-
-Install the optional visualisation dependency to use the Graphviz helpers:
-
-```bash
 python -m pip install '.[visualization]'
 ```
 
-Rendering an image also requires the [Graphviz](https://graphviz.org/)
-executables, including `dot`, to be installed and available on your `PATH`.
-Core models, algorithms, and JSON helpers work without Graphviz.
+### Docker
+
+Use Docker to run MoChA in JupyterLab without installing Python or Graphviz
+separately. The image includes Python 3.15, a Python notebook kernel, and
+Graphviz for drawing diagrams. It works on Intel/AMD computers and Apple
+Silicon.
+
+With Docker installed, start JupyterLab using the latest nightly version.
+Run this command from the directory where you want to keep your notebooks:
+
+```bash
+docker run --pull always --rm -it \
+  -p 127.0.0.1:8888:8888 \
+  --mount "type=bind,src=$PWD,dst=/work" \
+  ghcr.io/moves-rwth/mocha:nightly
+```
+
+The first run downloads the image. `--pull always` checks for an updated image
+each time you run it. When **Starting MoChA with JupyterLab** appears, allow a
+few seconds for startup, then open the browser link printed below it. The link
+includes your login token and opens JupyterLab directly.
+
+Keep the terminal open while you work. To stop JupyterLab, save your notebook,
+return to the terminal, and press **Ctrl+C**.
+
+The mounted directory appears as `/work` in the container. Notebooks and
+diagrams saved there remain on your computer after the container stops.
+On Linux, the mounted directory must be writable by UID 1000, the container's
+user.
+
+For an interactive Python prompt, run:
+
+```bash
+docker run --pull always --rm -it ghcr.io/moves-rwth/mocha:nightly python
+```
+
+To run a script from your current directory:
+
+```bash
+docker run --pull always --rm \
+  --mount "type=bind,src=$PWD,dst=/work" \
+  ghcr.io/moves-rwth/mocha:nightly python my_script.py
+```
+
+Choose the version that suits your work:
+
+- `nightly`: the current development version, updated each night.
+- `latest`: the most recent stable release, available after the first stable
+  release is published.
+- A specific [release tag](https://github.com/moves-rwth/mocha/releases)
 
 ## Transition Systems
 
@@ -102,10 +160,33 @@ for step in trace.steps:
     print(step.iteration, step.reachable_states)
 ```
 
+Use `reduce_to_reachable(system)` to create a new transition system containing
+only reachable states and transitions between them. It preserves their labels,
+all initial states, and the declared action and proposition sets. The original
+system remains unchanged; with no initial states, the result has no states.
+
+```python
+from mocha import reduce_to_reachable
+
+reduced = reduce_to_reachable(system)
+assert reduced.states == reachable.reachable_states
+```
+
 `trace_reachability`, `trace_invariant`, and `trace_persistence` return an
 `AlgorithmTrace` with the final `result` and an immutable tuple of `steps`.
 The direct algorithms also accept an `on_step` callback to stream snapshots.
 Their result and step types are exported from `mocha` and `mocha.algorithms`.
+
+For a complete invariant walkthrough, see
+[examples/invariant_checking.py](https://github.com/moves-rwth/mocha/blob/main/examples/invariant_checking.py).
+It builds a faulty mutual-exclusion model, derives the allowed states from
+their labels, explains the counterexample, and prints each invariant-checking
+step. It then removes the faulty transition and checks the invariant again.
+With MoChA installed, run it from the repository root:
+
+```bash
+python -I examples/invariant_checking.py
+```
 
 ## JSON Import and Export
 
@@ -243,7 +324,6 @@ The automaton must declare its complete alphabet $2^{\mathrm{AP}}$, including
 valuations that no system state currently uses. This follows the formal product
 definition and makes a mismatched proposition vocabulary explicit.
 
-
 ## State and Path Formulas
 
 `mocha.logic.StateFormula` and `mocha.logic.PathFormula` distinguish formulas
@@ -322,107 +402,12 @@ ctl_trace = trace_ctl_model_checking(ctl_system, ctl_enf, detail="reasoning")
 assert ctl_trace.result == ctl_result
 ```
 
-## LTL Formulas
 
-LTL formulas are immutable syntax trees defined in `mocha.logic.ltl`.
-Parse them with `mocha.io.parse_ltl`; normal forms and rewrite traces live in
-`mocha.algorithms`. These helpers are also available directly from `mocha`.
+## LTL Model Checking
 
-Atomic proposition names require double quotes and use JSON string escaping.
-The unquoted constants `true` and `false` are Boolean values; `"true"` and
-`"false"` are proposition names. An optional vocabulary checks which names
-are allowed:
-
-```python
-from mocha import parse_ltl
-
-formula = parse_ltl(
-    'G("request" -> F "grant")',
-    atomic_propositions={"request", "grant"},
-)
-print(formula)  # □(request → ◇grant)
-source = formula.to_source()
-assert parse_ltl(source) == formula
-```
-
-Malformed syntax raises `LTLParseError` with a one-based line and column;
-names outside the supplied vocabulary raise `ValueError`.
-`str(formula)` uses textbook display notation and may omit proposition
-quotes. Use `formula.to_source()` for text that can be parsed again.
-
-Supported operators are `!` (not), `&`/`&&` (and), `|`/`||` (or), `->`
-(implication), `<->` (equivalence), `X` (next), `F` (eventually), `G`
-(always), `U` (until), `W` (weak until), and `R` (release). The parser also
-accepts `¬`, `∧`, `∨`, `→`, `↔`, `◯`/`○`, `◇`, and `□`.
-From strongest to weakest, precedence is unary operators, `U`/`W`/`R`,
-conjunction, disjunction, implication, then equivalence. Implication and the
-temporal operators `U`, `W`, and `R` are not associative: chaining them at the
-same precedence requires parentheses. Write `"p" -> ("q" -> "r")` or
-`("p" -> "q") -> "r"`; `"p" -> "q" -> "r"` is rejected. The same applies to
-mixed temporal chains: write `"p" U ("q" R "r")` or `("p" U "q") R "r"`.
-Conjunction, disjunction, and equivalence may be chained and are grouped to
-the left. Parentheses override precedence. Adjacent unary temporal operators
-are accepted: `GF"p"` means `G F "p"`.
-
-### Normal Forms
-
-`normalize_ltl` rewrites a formula using only conjunction, negation, next,
-and until, plus propositions and Boolean constants. Negation may still
-apply to a temporal formula in this form.
-
-`to_release_pnf` and `to_weak_until_pnf` instead produce positive normal
-forms, where negation applies only to propositions. Both allow conjunction,
-disjunction, next, and until; the former also allows release, and the latter
-weak until. Boolean constants remain allowed in both forms.
-
-```python
-from mocha.algorithms import (
-    normalize_ltl, to_release_pnf, to_weak_until_pnf,
-)
-
-print(normalize_ltl(parse_ltl('G"p"')))  # ¬(true U ¬p)
-negated_until = parse_ltl('!("p" U "q")')
-print(to_release_pnf(negated_until))     # ¬p R ¬q
-print(to_weak_until_pnf(negated_until))  # (p ∧ ¬q) W (¬p ∧ ¬q)
-```
-
-### Transformation Traces
-
-`trace_normalize_ltl`, `trace_release_pnf`, and `trace_weak_until_pnf`
-return an `AlgorithmTrace` with the transformed formula in `result` and
-immutable `LTLRewriteStep` snapshots in `steps`:
-
-```python
-from mocha.algorithms import trace_normalize_ltl
-
-trace = trace_normalize_ltl(formula)
-for step in trace.steps:
-    print(step.iteration, step.rule, step.formula)
-assert trace.result == normalize_ltl(formula)
-```
-
-The first step records the input formula. Each later step records one named
-rewrite, the whole formula after that rewrite, and the changed subformula
-in `before` and `after`. Its `path` identifies the location using `operand`,
-`left`, and `right`. The direct transformations also accept an `on_step`
-callback to stream the same snapshots.
-
-These transformations preserve the formula's meaning on infinite words.
-Parsing and transforming a formula do not check whether a transition system
-satisfies it.
-
-### Model Checking
-
-`check_ltl(system, property)` checks whether **every infinite run from every
-initial state** satisfies an LTL formula. Interpretation starts with the initial
-state's label: `"grant"` concerns that state, while `X "grant"` concerns its
-successor. Derived operators such as `F` and `G` are normalized automatically.
-
-The system must have no terminal states, including unreachable ones. Its
-declared atomic proposition names must be strings, and every name in the formula
-must be declared. Extra system propositions are allowed and ignored by the
-automaton construction. The input system is not modified. With no initial
-states, every property holds vacuously.
+`check_ltl` checks whether every infinite run from an initial state satisfies
+an LTL formula. For example, this system eventually reaches a state labelled
+`grant` and stays there:
 
 ```python
 from mocha import TransitionSystem, check_ltl, parse_ltl
@@ -440,63 +425,17 @@ ltl_system = TransitionSystem.from_components(
 )
 
 assert check_ltl(ltl_system, parse_ltl('F "grant"')).satisfies
-
-ltl_property = parse_ltl('G "grant"')
-ltl_result = check_ltl(ltl_system, ltl_property)
-assert not ltl_result.satisfies  # grant is absent in the initial state
+assert not check_ltl(ltl_system, parse_ltl('G "grant"')).satisfies
 ```
 
-When the property fails, `counterexample` contains a finite representation of
-an infinite violating path: a prefix followed by a repeating cycle, called a
-lasso. Its entries are original system states. The final entry repeats the state
-at the zero-based `loop_start` index to close the cycle; omit that last entry
-when extracting the repeating portion:
+`F` means “eventually” and `G` means “always”. The second property fails
+because `grant` is absent in the initial state. LTL checking requires every
+state to have an outgoing transition and every formula proposition to be
+declared in the system.
 
-```python
-ltl_path = ltl_result.counterexample
-ltl_loop_start = ltl_result.loop_start
-assert ltl_path is not None and ltl_loop_start is not None
-assert ltl_path[-1] == ltl_path[ltl_loop_start]
-
-ltl_prefix = ltl_path[:ltl_loop_start]   # traverse once
-ltl_cycle = ltl_path[ltl_loop_start:-1]  # repeat forever
-assert ltl_cycle
-```
-
-Apply `ltl_system.labels(state)` along that infinite path to obtain the word
-that violates the property. A counterexample need not be shortest or unique.
-When the property holds, `counterexample`, `product_counterexample`, and
-`loop_start` are all `None`.
-
-For construction details, the result also retains the negated formula, its
-GNBA translation, the equivalent NBA, and the system–NBA product. The separate
-`search_product` marks non-accepting states and completes product dead ends with
-a non-accepting sink for persistence search. `product_counterexample` retains
-the automaton component of each path position; `counterexample` projects it
-onto the original system while preserving the cycle boundary.
-
-`trace_check_ltl` collects the steps for negation, GNBA translation, NBA
-conversion, product construction, emptiness search, and the verdict. Detailed
-translation and depth-first-search events are available in each step's `detail`:
-
-```python
-from mocha import trace_check_ltl
-
-ltl_trace = trace_check_ltl(ltl_system, ltl_property)
-assert not ltl_trace.result.satisfies
-for step in ltl_trace.steps:
-    print(step.iteration, step.stage, step.message)
-```
-
-The direct check also accepts `on_step` to stream the same events. Trace helpers
-retain all snapshots in memory. To draw the projected counterexample, use the
-lasso renderer with the optional `visualization` extra:
-
-```python
-from mocha.visualisation import to_lasso_graphviz
-
-ltl_graph = to_lasso_graphviz(ltl_system, ltl_path, ltl_loop_start)
-```
+The [LTL guide](https://github.com/moves-rwth/mocha/blob/main/docs/ltl.md)
+explains formula syntax, normal forms, rewrite traces, checking preconditions,
+and how to interpret and visualise a counterexample's repeating cycle.
 
 ## Visualisation
 
@@ -539,6 +478,65 @@ from mocha.visualisation import visualise_reachability_step
 
 graph = visualise_reachability_step(system, trace_reachability(system).steps[0])
 ```
+
+### Automata
+
+`to_automaton_graphviz` renders `Automaton`, `FiniteAutomaton`, `NBA`, and `GNBA`
+models as state diagrams. States are circles by default, incoming
+arrows identify initial states, and accepting states of finite and Büchi automata
+use squares. Pass `accepting_state_shape=AcceptingStateShape.DOUBLE_CIRCLE` to
+use double circles instead. Symbols connecting the same pair of states share
+an edge label.
+
+```python
+from mocha import FiniteAutomaton
+from mocha.visualisation import AcceptingStateShape, to_automaton_graphviz
+
+automaton = FiniteAutomaton.from_components(
+    states={"q0", "q1"}, alphabet={"a", "b"},
+    transitions={
+        ("q0", "a", "q0"), ("q0", "b", "q1"), ("q1", "b", "q1"),
+    },
+    initial_states={"q0"}, accepting_states={"q1"},
+)
+graph = to_automaton_graphviz(
+    automaton, accepting_state_shape=AcceptingStateShape.SQUARE,
+)
+graph.render("automaton", format="svg", cleanup=True)
+```
+
+For generalized Büchi automata, bracketed labels such as `[F1, F2]` mark
+acceptance-set memberships directly below the state name inside the circle.
+The diagram uses no colours, legend, or set definitions. An accepting run must
+visit every set infinitely often. An SVG graph tooltip identifies empty sets
+that cannot be marked on any state, or an empty family with no acceptance
+requirements. Set indices are assigned for display; the model stores an
+unordered family.
+
+Use `format_state` and `format_symbol` to display non-string values, including
+product states and sets of propositions. For example, an automaton over
+proposition sets can use:
+
+```python
+from mocha import NBA
+
+nba = NBA.from_components(
+    states={0}, alphabet={frozenset(), frozenset({"p"})},
+    transitions={(0, frozenset(), 0), (0, frozenset({"p"}), 0)},
+    initial_states={0}, accepting_states={0},
+)
+graph = to_automaton_graphviz(
+    nba,
+    format_state=lambda state: str(state),
+    format_symbol=lambda symbol: "{" + ", ".join(sorted(symbol)) + "}",
+)
+```
+
+Labels are literal text. `highlighted_states` and `highlighted_transitions`
+(iterables of `AutomatonTransition` values) draw thicker outlines and edges;
+unknown selections raise `ValueError`. All the DOT, image, and notebook output
+workflows above apply. The renderer is also available as
+`mocha.visualisation.automaton.to_graphviz`.
 
 ### Persistence Counterexamples
 
@@ -588,11 +586,45 @@ through `format_state`, `format_action`, and `format_proposition` callbacks.
 
 ## Development
 
-Run the test suite from the repository root:
+See the [contributor guide](https://github.com/moves-rwth/mocha/blob/main/CONTRIBUTING.md)
+for environment setup, tests, the typing example, and release-artifact checks.
+After setting up the development environment, run the test suite from the
+repository root:
 
 ```bash
 PYTHONPATH=src python -m unittest discover -s tests
 ```
+
+### Type Checking
+
+Install the type checker, JSON Schema stubs, and visualisation dependency:
+
+```bash
+python -m pip install -e '.[visualization,typecheck]'
+```
+
+Run strict type checking across the library:
+
+```bash
+python -m mypy
+```
+
+The configuration in `pyproject.toml` checks `src/mocha` in strict mode,
+targeting Python 3.11. Graphviz 0.21 lacks a `py.typed` marker, so a scoped
+override lets mypy read its existing source annotations. Checking calls to
+Graphviz is limited by the annotations it provides.
+
+## Project Status and Scope
+
+MoChA is intended for teaching and small worked examples. During the `0.x`
+release series, public APIs may change between releases. Breaking changes will
+be documented in the
+[changelog](https://github.com/moves-rwth/mocha/blob/main/CHANGELOG.md).
+
+LTL automata construction explicitly enumerates combinations of formula
+choices and atomic-proposition valuations. Its time and memory requirements
+can grow exponentially as formulas grow. Trace helpers retain intermediate
+snapshots in memory, which can further increase memory use.
 
 ## License
 

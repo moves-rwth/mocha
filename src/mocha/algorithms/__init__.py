@@ -44,6 +44,7 @@ from .reachability import (
     ReachabilityResult,
     ReachabilityStep,
     compute_reachable_states,
+    reduce_to_reachable,
     trace_reachability,
 )
 from .ltl2gnba import (
@@ -124,6 +125,7 @@ __all__ = [
     "check_invariant",
     "check_persistence",
     "compute_reachable_states",
+    "reduce_to_reachable",
     "cycle_check",
     "gnba_to_nba",
     "normalize_ltl",

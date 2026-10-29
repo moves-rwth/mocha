@@ -1,0 +1,11 @@
+# Include only the files needed to build the installed package.
+**
+!Dockerfile
+!pyproject.toml
+!README.md
+!LICENCE
+!src/
+!src/**
+**/__pycache__/
+**/*.py[cod]
+**/*.egg-info/

@@ -103,7 +103,11 @@ class Release(LTLFormula):
     right: LTLFormula
 
 
-_BINARY_PRINT = {
+_UnaryFormula = Not | Next | Eventually | Always
+_BinaryFormula = And | Or | Implies | Equiv | Until | WeakUntil | Release
+
+
+_BINARY_PRINT: dict[type[_BinaryFormula], tuple[int, str, bool]] = {
     And: (4, "∧", False),
     Or: (3, "∨", False),
     Implies: (2, "→", True),
@@ -112,7 +116,9 @@ _BINARY_PRINT = {
     WeakUntil: (5, "W", True),
     Release: (5, "R", True),
 }
-_UNARY_PRINT = {Not: "¬", Next: "◯", Eventually: "◇", Always: "□"}
+_UNARY_PRINT: dict[type[_UnaryFormula], str] = {
+    Not: "¬", Next: "◯", Eventually: "◇", Always: "□",
+}
 
 
 def _format_formula(
@@ -127,12 +133,12 @@ def _format_formula(
         ):
             return formula.name
         return json.dumps(formula.name, ensure_ascii=False)
-    for node_type, symbol in _UNARY_PRINT.items():
-        if isinstance(formula, node_type):
+    for unary_type, symbol in _UNARY_PRINT.items():
+        if isinstance(formula, unary_type):
             result = symbol + _format_formula(formula.operand, 6, quote_propositions=quote_propositions)
             return f"({result})" if 6 < minimum_precedence else result
-    for node_type, (precedence, symbol, non_associative) in _BINARY_PRINT.items():
-        if isinstance(formula, node_type):
+    for binary_type, (precedence, symbol, non_associative) in _BINARY_PRINT.items():
+        if isinstance(formula, binary_type):
             left_minimum = precedence + 1 if non_associative else precedence
             right_minimum = precedence + 1
             left = _format_formula(formula.left, left_minimum, quote_propositions=quote_propositions)

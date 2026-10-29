@@ -376,6 +376,36 @@ class TransitionSystem(Generic[State, Action, AtomicProposition]):
 
         self._atomic_propositions.remove(proposition)
 
+    def induced_subsystem(self, states: Iterable[State]) -> TransitionSystem[State, Action, AtomicProposition]:
+        """Return a new system induced by the selected states.
+
+        Retain exactly the transitions whose endpoints are both selected,
+        the selected states' labels, and their initial-state membership.
+        Actions and atomic propositions remain declared, even if unused.
+        An empty selection yields a system with no states or transitions.
+
+        Raises ``ValueError`` if any selected state is unknown. The returned
+        system has independent collections; state, action, and proposition
+        values themselves are shared.
+        """
+        states = set(states)
+        unknown = states - self._states
+        if unknown:
+            raise ValueError(f"Unknown states: {unknown!r}")
+
+        return self.from_components(
+            states=states,
+            actions=self._actions,
+            transitions=(
+                transition
+                for transition in self.transitions()
+                if transition.source in states and transition.target in states
+            ),
+            initial_states=self._initial_states & states,
+            atomic_propositions=self._atomic_propositions,
+            labels={state: self._labels[state] for state in states},
+        )
+
     @classmethod
     def from_components(
             cls,
@@ -400,7 +430,7 @@ class TransitionSystem(Generic[State, Action, AtomicProposition]):
         transitions = set(transitions)
         initial_states = set(initial_states)
         atomic_propositions = set(atomic_propositions)
-        labels = {
+        labelling_function = {
             state: set(state_labels)
             for state, state_labels in (labels or {}).items()
         }
@@ -415,7 +445,7 @@ class TransitionSystem(Generic[State, Action, AtomicProposition]):
                 f"Unknown initial states: {unknown!r}"
             )
 
-        unknown_label_states = set(labels) - states
+        unknown_label_states = set(labelling_function) - states
 
         if unknown_label_states:
             raise ValueError(
@@ -423,12 +453,12 @@ class TransitionSystem(Generic[State, Action, AtomicProposition]):
                 f"{unknown_label_states!r}"
             )
 
-        for state, state_labels in labels.items():
-            unknown = state_labels - atomic_propositions
-            if unknown:
+        for state, state_labels in labelling_function.items():
+            unknown_propositions = state_labels - atomic_propositions
+            if unknown_propositions:
                 raise ValueError(
                     f"State {state!r} uses unknown atomic "
-                    f"propositions: {unknown!r}"
+                    f"propositions: {unknown_propositions!r}"
                 )
 
         for source, action, target in transitions:
@@ -455,7 +485,7 @@ class TransitionSystem(Generic[State, Action, AtomicProposition]):
         for state in states:
             ts.add_state(
                 state,
-                labels=labels.get(state, ()),
+                labels=labelling_function.get(state, ()),
             )
 
         # actions

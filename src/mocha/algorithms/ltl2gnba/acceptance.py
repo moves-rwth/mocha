@@ -147,6 +147,7 @@ def compute_acceptance_sets(
         decisions = []
         indices = set()
         for index, state in enumerate(states):
+            reason: Literal["until_absent", "right_present", "until_pending"]
             if node not in state:
                 included, reason = True, "until_absent"
                 explanation = f"({node}) is absent; there is no pending obligation."
