@@ -13,6 +13,8 @@
 
 ### Changed
 
+- Renamed `TransitionRelationStep.input` to `valuation`, including its
+  constructor keyword. Markdown explanations now label it as "Valuation".
 - Standardized transition-system parameters as `transition_system` across
   algorithms, I/O, and rendering helpers. Replace keyword arguments `ts=`
   and `system=` with `transition_system=`. Positional calls are unchanged.

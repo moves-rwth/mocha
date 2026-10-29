@@ -209,7 +209,7 @@ def check_ltl(
             return detail.message
         if isinstance(detail, TransitionRelationStep):
             names = ", ".join(f"B{i + 1}" for i in sorted(detail.targets))
-            symbol = "{" + ", ".join(sorted(detail.input)) + "}" if detail.input else "∅"
+            symbol = "{" + ", ".join(sorted(detail.valuation)) + "}" if detail.valuation else "∅"
             return f"Transitions from B{detail.source_index + 1} on {symbol}: {{{names}}}."
         if isinstance(detail, AcceptanceStep):
             if detail.condition is None:

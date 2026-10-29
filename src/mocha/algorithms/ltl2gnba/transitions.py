@@ -114,7 +114,8 @@ def _valuation_text(valuation: Valuation) -> str:
 class TransitionRelationStep:
     """A complete derivation of outgoing transitions for one elementary set.
 
-    ``input`` is the valuation labelling every outgoing transition.
+    ``valuation`` is the set of atomic proposition names true in the source,
+    labelling every outgoing transition.
     ``restrictions`` visits each NEXT and UNTIL formula once, specializing its
     rule to this source. ``targets`` is the final intersection. Source and
     target indices refer to the supplied state order and are zero-based.
@@ -128,16 +129,16 @@ class TransitionRelationStep:
     iteration: int
     source_index: int
     source: ElementarySet
-    input: Valuation
+    valuation: Valuation
     restrictions: tuple[TransitionRestriction, ...]
     targets: frozenset[int]
 
     def to_markdown(self) -> str:
-        """Explain the input and successive target restrictions for this source."""
+        """Explain the valuation and successive target restrictions for this source."""
         name = f"B{self.source_index + 1}"
-        label = _valuation_text(self.input)
+        label = _valuation_text(self.valuation)
         lines = [f"### Transitions from {name}", "",
-                 f"Input: {label} (the atomic propositions in {name}).", "",
+                 f"Valuation: {label} (the atomic propositions in {name}).", "",
                  "Start with all elementary sets as possible targets.", ""]
         for index, restriction in enumerate(self.restrictions, 1):
             lines.extend([
@@ -289,8 +290,14 @@ def compute_transition_relation(
             ))
         allowed.update((source_index, target) for target in remaining)
         if on_step is not None:
-            on_step(TransitionRelationStep(source_index, source_index, source, labels[source_index],
-                                           tuple(restrictions), remaining))
+            on_step(TransitionRelationStep(
+                iteration=source_index,
+                source_index=source_index,
+                source=source,
+                valuation=labels[source_index],
+                restrictions=tuple(restrictions),
+                targets=remaining,
+            ))
 
     transitions = frozenset(AutomatonTransition(states[i], labels[i], states[j]) for i, j in allowed)
     names = sorted(propositions(formula))
@@ -305,7 +312,7 @@ def trace_transition_relation(
     formula: LTLFormula,
     elementary_sets: Iterable[Iterable[LTLFormula]],
 ) -> AlgorithmTrace[TransitionRelationResult, TransitionRelationStep]:
-    """Record the input and ordered formula restrictions for each source set.
+    """Record the valuation and ordered formula restrictions for each source set.
 
     Accepts ``(formula, elementary_sets)`` with the same validation and ordering
     rules as ``compute_transition_relation``.
