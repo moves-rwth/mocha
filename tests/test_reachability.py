@@ -25,7 +25,7 @@ class ReachabilityTests(unittest.TestCase):
         states_before = system.states
         transitions_before = set(system.transitions())
 
-        reachable = compute_reachable_states(system)
+        reachable = compute_reachable_states(transition_system=system)
 
         self.assertIsInstance(reachable, frozenset)
         self.assertEqual(reachable, {"start", "cycle", "terminal", "isolated"})
@@ -43,7 +43,7 @@ class ReachabilityTests(unittest.TestCase):
         snapshots: list[ReachabilityStep[int]] = []
 
         reachable = compute_reachable_states(system, on_step=snapshots.append)
-        trace = trace_reachability(system)
+        trace = trace_reachability(transition_system=system)
 
         self.assertIsInstance(trace.result, frozenset)
         self.assertEqual(trace.result, reachable)
@@ -87,7 +87,7 @@ class ReachableReductionTests(unittest.TestCase):
             labels={"start": {"safe"}, "unreachable": {"error"}},
         )
 
-        reduced = reduce_to_reachable(system)
+        reduced = reduce_to_reachable(transition_system=system)
 
         self.assertEqual(reduced.states, frozenset({"start", "cycle", "deadlock", "isolated"}))
         self.assertEqual(reduced.initial_states, system.initial_states)

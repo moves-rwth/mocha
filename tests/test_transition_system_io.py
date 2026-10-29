@@ -24,7 +24,7 @@ class TransitionSystemIoTests(unittest.TestCase):
             },
         )
 
-        restored = from_dict(to_dict(original))
+        restored = from_dict(to_dict(transition_system=original))
 
         self.assertEqual(restored.states, original.states)
         self.assertEqual(restored.actions, original.actions)

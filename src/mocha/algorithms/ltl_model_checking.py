@@ -5,7 +5,7 @@ transition system. A reachable accepting cycle gives an infinite run violating
 the property. Results retain both the automaton product used for the proof and
 the counterexample projected onto the original system's states.
 
-Use ``check_ltl(system, property)`` for the verdict and construction results, or
+Use ``check_ltl(transition_system, property)`` for the verdict and construction results, or
 ``trace_ltl`` to retain the detailed steps. Formula interpretation starts
 at the initial state's label. Failed checks return a finite prefix and cycle
 representing an infinite violating path through the original system.
@@ -130,12 +130,12 @@ class LTLModelCheckingResult(Generic[State]):
 
 
 def check_ltl(
-    system: TransitionSystem[State, Action, str],
+    transition_system: TransitionSystem[State, Action, str],
     property: LTLFormula,
     *,
     on_step: Callable[[LTLModelCheckingStep[State]], None] | None = None,
 ) -> LTLModelCheckingResult[State]:
-    """Check whether every infinite run of ``system`` satisfies ``property``.
+    """Check whether every infinite run of ``transition_system`` satisfies ``property``.
 
     The pipeline explicitly constructs the negation of ``property``, translates that formula to
     a GNBA, converts it to an NBA, forms the standard product, and uses
@@ -155,11 +155,12 @@ def check_ltl(
     chosen counterexample need not be shortest or unique.
 
     Args:
-        system: Transition system with string proposition names and no terminal
-            states, including among unreachable states. It is not modified.
+        transition_system: Transition system with string proposition names and
+            no terminal states, including among unreachable states. It is not
+            modified.
         property: LTL formula interpreted from the first state of each initial
             run. Derived operators are normalized automatically. Every formula
-            proposition must be declared in ``system.atomic_propositions``.
+            proposition must be declared in ``transition_system.atomic_propositions``.
         on_step: Optional synchronous callback receiving globally numbered
             events from negation through the verdict, including nested
             translation details and persistence DFS snapshots.
@@ -174,13 +175,13 @@ def check_ltl(
         ValueError: If the formula uses an undeclared proposition or the system
             contains a terminal state.
     """
-    if any(not isinstance(name, str) for name in system.atomic_propositions):
+    if any(not isinstance(name, str) for name in transition_system.atomic_propositions):
         raise TypeError("LTL model checking requires string atomic proposition names")
     used = propositions(property)
-    undeclared = used - system.atomic_propositions
+    undeclared = used - transition_system.atomic_propositions
     if undeclared:
         raise ValueError(f"Unknown atomic propositions: {sorted(undeclared)!r}")
-    if not system.is_non_blocking():
+    if not transition_system.is_non_blocking():
         raise ValueError("LTL model checking requires a transition system without terminal states")
 
     iteration = 0
@@ -223,12 +224,12 @@ def check_ltl(
     nba = gnba_to_nba(translation.automaton)
     report("nba_conversion", f"Convert the GNBA to an NBA with {len(nba.states)} states.")
     projected = TransitionSystem[State, Hashable, str].from_components(
-        states=system.states,
-        actions=system.actions,
-        transitions=system.transitions(),
-        initial_states=system.initial_states,
+        states=transition_system.states,
+        actions=transition_system.actions,
+        transitions=transition_system.transitions(),
+        initial_states=transition_system.initial_states,
         atomic_propositions=used,
-        labels={state: system.labels(state) & used for state in system.states},
+        labels={state: transition_system.labels(state) & used for state in transition_system.states},
     )
     product = transition_system_automaton_product(projected, nba)
     report("product", f"Build the product after projecting labels onto {sorted(used)!r}; "
@@ -296,7 +297,7 @@ def check_ltl(
 
 
 def trace_ltl(
-    system: TransitionSystem[State, Action, str], property: LTLFormula,
+    transition_system: TransitionSystem[State, Action, str], property: LTLFormula,
 ) -> AlgorithmTrace[LTLModelCheckingResult[State], LTLModelCheckingStep[State]]:
     """Check the property and retain every construction and search event in memory.
 
@@ -306,7 +307,7 @@ def trace_ltl(
     translation records and persistence DFS snapshots.
     """
     steps: list[LTLModelCheckingStep[State]] = []
-    result = check_ltl(system, property, on_step=steps.append)
+    result = check_ltl(transition_system, property, on_step=steps.append)
     return AlgorithmTrace(result, tuple(steps))
 
 
