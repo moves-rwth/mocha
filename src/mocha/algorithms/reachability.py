@@ -34,7 +34,7 @@ class ReachabilityStep(Generic[State]):
 
 
 def compute_reachable_states(
-        ts: TransitionSystem[State, Action, AtomicProposition],
+        transition_system: TransitionSystem[State, Action, AtomicProposition],
         *,
         on_step: Callable[[ReachabilityStep[State]], None] | None = None,
 ) -> frozenset[State]:
@@ -49,13 +49,13 @@ def compute_reachable_states(
     the final expansion that reaches the fixed point.
 
     Args:
-        ts: The transition system to analyse.
+        transition_system: The transition system to analyse.
         on_step: Optional callback for progress snapshots.
 
     Returns:
         The complete reachable set as a ``frozenset`` of state values.
     """
-    reachable_states = set(ts.initial_states)
+    reachable_states = set(transition_system.initial_states)
     iteration = 0
 
     if on_step is not None:
@@ -70,7 +70,7 @@ def compute_reachable_states(
         successors: set[State] = set()
 
         for state in reachable_states:
-            successors.update(ts.post(state))
+            successors.update(transition_system.post(state))
 
         new_reachable = reachable_states | successors
 
@@ -92,7 +92,7 @@ def compute_reachable_states(
 
 
 def reduce_to_reachable(
-        ts: TransitionSystem[State, Action, AtomicProposition],
+        transition_system: TransitionSystem[State, Action, AtomicProposition],
 ) -> TransitionSystem[State, Action, AtomicProposition]:
     """Return a new system containing only states reachable from initial states.
 
@@ -101,12 +101,12 @@ def reduce_to_reachable(
     With no initial states, the result has no states or transitions.
     The input system is not modified.
     """
-    reachable = compute_reachable_states(ts)
-    return ts.induced_subsystem(reachable)
+    reachable = compute_reachable_states(transition_system)
+    return transition_system.induced_subsystem(reachable)
 
 
 def trace_reachability(
-        ts: TransitionSystem[State, Action, AtomicProposition],
+        transition_system: TransitionSystem[State, Action, AtomicProposition],
 ) -> AlgorithmTrace[
     frozenset[State],
     ReachabilityStep[State],
@@ -114,7 +114,7 @@ def trace_reachability(
     """Run reachability analysis and retain every reported step.
 
     Args:
-        ts: The transition system to analyse.
+        transition_system: The transition system to analyse.
 
     Returns:
         An ``AlgorithmTrace`` whose ``result`` is the reachable-state
@@ -126,7 +126,7 @@ def trace_reachability(
     steps: list[ReachabilityStep[State]] = []
 
     result = compute_reachable_states(
-        ts,
+        transition_system,
         on_step=steps.append,
     )
 

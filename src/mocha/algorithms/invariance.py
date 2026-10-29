@@ -50,7 +50,7 @@ class InvariantStep(Generic[State]):
     satisfies_invariant: bool
 
 def check_invariant(
-        ts: TransitionSystem[State, Action, AtomicProposition],
+        transition_system: TransitionSystem[State, Action, AtomicProposition],
         invariant_states: Iterable[State],
         *,
         on_step: Callable[[InvariantStep[State]], None] | None = None,
@@ -62,7 +62,7 @@ def check_invariant(
     to that state. Unreachable states do not affect the result.
 
     Args:
-        ts: The transition system to analyse.
+        transition_system: The transition system to analyse.
         invariant_states: States in which the invariant holds.
         on_step: Optional callback invoked for each examined reachable state.
 
@@ -71,18 +71,18 @@ def check_invariant(
         state encountered.
 
     Raises:
-        ValueError: If ``invariant_states`` contains a state outside ``ts``.
+        ValueError: If ``invariant_states`` contains a state outside ``transition_system``.
     """
     invariant_states = set(invariant_states)
 
-    unknown = invariant_states - ts.states
+    unknown = invariant_states - transition_system.states
     if unknown:
         raise ValueError(
             f"Invariant contains unknown states: {unknown!r}"
         )
 
     visited: set[State] = set()
-    initial_states = ts.initial_states
+    initial_states = transition_system.initial_states
     to_explore: list[State] = list(initial_states)
 
     predecessor: dict[State, State] = {
@@ -124,7 +124,7 @@ def check_invariant(
                 counterexample=tuple(path),
             )
 
-        for successor in ts.post(state):
+        for successor in transition_system.post(state):
             if successor not in visited and successor not in predecessor:
                 predecessor[successor] = state
                 to_explore.append(successor)
@@ -134,7 +134,7 @@ def check_invariant(
     )
 
 def trace_invariant(
-        ts: TransitionSystem[State, Action, AtomicProposition],
+        transition_system: TransitionSystem[State, Action, AtomicProposition],
         invariant_states: Iterable[State],
 ) -> AlgorithmTrace[
     InvariantResult[State],
@@ -143,19 +143,19 @@ def trace_invariant(
     """Run invariant checking and retain every exploration step.
 
     Args:
-        ts: The transition system to analyse.
+        transition_system: The transition system to analyse.
         invariant_states: States in which the invariant holds.
 
     Returns:
         The invariant result and one snapshot per examined state.
 
     Raises:
-        ValueError: If ``invariant_states`` contains a state outside ``ts``.
+        ValueError: If ``invariant_states`` contains a state outside ``transition_system``.
     """
     steps: list[InvariantStep[State]] = []
 
     result = check_invariant(
-        ts,
+        transition_system,
         invariant_states,
         on_step=steps.append,
     )

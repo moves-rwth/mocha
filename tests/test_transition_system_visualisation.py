@@ -50,7 +50,7 @@ class TransitionSystemRenderingTests(unittest.TestCase):
             initial_states=states, atomic_propositions={6, ("p", 7)},
             labels={state: {6, ("p", 7)} for state in states},
         )
-        graph = to_graphviz(ts)
+        graph = to_graphviz(transition_system=ts)
         nodes = [node for node in svg_groups(graph, "node") if text_labels(node)]
         labels_by_id = {
             node.findtext(f"{SVG}title"): text_labels(node)[0] for node in nodes

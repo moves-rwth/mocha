@@ -13,6 +13,9 @@
 
 ### Changed
 
+- Standardized transition-system parameters as `transition_system` across
+  algorithms, I/O, and rendering helpers. Replace keyword arguments `ts=`
+  and `system=` with `transition_system=`. Positional calls are unchanged.
 - Renamed `trace_check_ltl` to `trace_ltl` in `mocha`, `mocha.algorithms`, and
   `mocha.algorithms.ltl_model_checking`.
 - Renamed `visualise_step` to `visualise_overlay` in `mocha.visualisation`

@@ -26,7 +26,7 @@ __all__ = ["to_graphviz", "to_lasso_graphviz", "visualise_overlay"]
 
 
 def to_graphviz(
-        ts: TransitionSystem[State, Action, AtomicProposition],
+        transition_system: TransitionSystem[State, Action, AtomicProposition],
         *,
         highlighted_states: Iterable[State] = (),
         highlighted_transitions: Iterable[Transition[State, Action]] = (),
@@ -51,7 +51,7 @@ def to_graphviz(
     Graphviz syntax and initial-state markers.
 
     Args:
-        ts: The transition system to render.
+        transition_system: The transition system to render.
         highlighted_states: States to draw with a thicker outline.
         highlighted_transitions: Transitions to draw with a thicker edge.
         current_state: A state to draw with a double outline, or ``None`` for
@@ -65,18 +65,18 @@ def to_graphviz(
 
     Raises:
         ValueError: If a highlighted state or transition, or ``current_state``,
-            does not belong to ``ts``.
+            does not belong to ``transition_system``.
     """
     highlighted_states = set(highlighted_states)
     highlighted_transitions = set(highlighted_transitions)
 
-    unknown_states = highlighted_states - ts.states
+    unknown_states = highlighted_states - transition_system.states
     if unknown_states:
         raise ValueError(
             f"Cannot highlight unknown states: {unknown_states!r}"
         )
 
-    transitions = set(ts.transitions())
+    transitions = set(transition_system.transitions())
     unknown_transitions = highlighted_transitions - transitions
     if unknown_transitions:
         raise ValueError(
@@ -84,13 +84,13 @@ def to_graphviz(
             f"{unknown_transitions!r}"
         )
 
-    if current_state is not None and current_state not in ts.states:
+    if current_state is not None and current_state not in transition_system.states:
         raise ValueError(
             f"Cannot mark unknown current state: {current_state!r}"
         )
 
-    state_labels = {state: format_state(state) for state in ts.states}
-    states = sorted(ts.states, key=lambda state: (state_labels[state], repr(state)))
+    state_labels = {state: format_state(state) for state in transition_system.states}
+    states = sorted(transition_system.states, key=lambda state: (state_labels[state], repr(state)))
     state_indices = {state: index for index, state in enumerate(states)}
     node_ids = {
         state: f"state_{index}" for state, index in state_indices.items()
@@ -102,7 +102,7 @@ def to_graphviz(
 
     graph: Digraph = Digraph()
     for state, node_id in node_ids.items():
-        propositions = sorted(format_proposition(value) for value in ts.labels(state))
+        propositions = sorted(format_proposition(value) for value in transition_system.labels(state))
 
         if propositions:
             proposition_labels = f"{{{', '.join(propositions)}}}"
@@ -159,7 +159,7 @@ def to_graphviz(
                 penwidth="3",
             )
 
-    for index, state in enumerate(sorted(ts.initial_states, key=state_indices.__getitem__)):
+    for index, state in enumerate(sorted(transition_system.initial_states, key=state_indices.__getitem__)):
         marker = f"__initial_{index}"
         graph.node(marker, label="", shape="none", width="0", height="0")
         graph.edge(marker, node_ids[state])
@@ -168,7 +168,7 @@ def to_graphviz(
 
 
 def visualise_overlay(
-        ts: TransitionSystem[State, Action, AtomicProposition],
+        transition_system: TransitionSystem[State, Action, AtomicProposition],
         overlay: TransitionSystemOverlay[State, Action],
         *,
         format_state: Callable[[State], str] = str,
@@ -178,7 +178,7 @@ def visualise_overlay(
     """Render a transition system with an overlay's selections highlighted.
 
     Args:
-        ts: The transition system to render.
+        transition_system: The transition system to render.
         overlay: The overlay that identifies states and transitions to emphasize.
         format_state: Convert a state into its displayed name.
         format_action: Convert an action into its edge-label text.
@@ -189,10 +189,10 @@ def visualise_overlay(
 
     Raises:
         ValueError: If the overlay refers to a state or transition outside
-            ``ts``.
+            ``transition_system``.
     """
     return to_graphviz(
-        ts,
+        transition_system,
         highlighted_states=overlay.highlighted_states,
         highlighted_transitions=overlay.highlighted_transitions,
         format_state=format_state,
@@ -202,7 +202,7 @@ def visualise_overlay(
 
 
 def to_lasso_graphviz(
-        ts: TransitionSystem[State, Action, AtomicProposition],
+        transition_system: TransitionSystem[State, Action, AtomicProposition],
         counterexample: Sequence[State],
         loop_start: int,
         *,
@@ -222,7 +222,7 @@ def to_lasso_graphviz(
 
     Raises:
         ValueError: If the sequence is not a lasso-shaped run from an initial
-            state of ``ts``.
+            state of ``transition_system``.
     """
     states = tuple(counterexample)
     if len(states) < 2:
@@ -233,14 +233,14 @@ def to_lasso_graphviz(
         )
     if states[-1] != states[loop_start]:
         raise ValueError("The last state must repeat the state at loop_start")
-    unknown = set(states) - ts.states
+    unknown = set(states) - transition_system.states
     if unknown:
         raise ValueError(f"Counterexample contains unknown states: {unknown!r}")
-    if states[0] not in ts.initial_states:
+    if states[0] not in transition_system.initial_states:
         raise ValueError("The counterexample must start in an initial state")
 
     actions_by_pair: dict[tuple[State, State], set[Action]] = defaultdict(set)
-    for transition in ts.transitions():
+    for transition in transition_system.transitions():
         actions_by_pair[transition.source, transition.target].add(transition.action)
     for source, target in pairwise(states):
         if not actions_by_pair[source, target]:
@@ -252,7 +252,7 @@ def to_lasso_graphviz(
     graph.edge("__initial", "step_0")
 
     for index, state in enumerate(states[:-1]):
-        propositions = sorted(format_proposition(value) for value in ts.labels(state))
+        propositions = sorted(format_proposition(value) for value in transition_system.labels(state))
         state_labels = f"{{{', '.join(propositions)}}}" if propositions else "∅"
         attributes = (
             {"style": "filled", "fillcolor": "#E8F0FE"}

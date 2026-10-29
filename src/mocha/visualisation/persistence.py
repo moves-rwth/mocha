@@ -11,7 +11,7 @@ from .transition_system import to_lasso_graphviz
 
 
 def visualise_persistence_counterexample(
-        ts: TransitionSystem[State, Action, AtomicProposition],
+        transition_system: TransitionSystem[State, Action, AtomicProposition],
         result: PersistenceResult[State],
         *,
         format_state: Callable[[State], str] = str,
@@ -26,7 +26,7 @@ def visualise_persistence_counterexample(
 
     Raises:
         ValueError: If the result is successful, lacks a counterexample lasso,
-            or its lasso is not a valid run of ``ts``.
+            or its lasso is not a valid run of ``transition_system``.
     """
     if result.satisfies:
         raise ValueError("A successful persistence result has no counterexample to visualise")
@@ -34,7 +34,7 @@ def visualise_persistence_counterexample(
     if result.counterexample is None or result.loop_start is None:
         raise ValueError("A failing persistence result must include a lasso")
     graph = to_lasso_graphviz(
-        ts,
+        transition_system,
         result.counterexample,
         result.loop_start,
         format_state=format_state,

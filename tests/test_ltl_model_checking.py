@@ -74,7 +74,7 @@ class LTLModelCheckingTests(unittest.TestCase):
         ts = system({"s0": {"p", "extra"}, "s1": {"p"}, "s2": set()},
                     {("s0", "s1"), ("s1", "s2"), ("s2", "s2")})
         formula = parse_ltl('G"p"')
-        trace = trace_ltl(ts, formula)
+        trace = trace_ltl(transition_system=ts, property=formula)
         self.assertEqual(trace.steps[0].stage, "negation")
         self.assertEqual(trace.steps[0].detail, Not(formula))
         self.assertIn("Negate", trace.steps[0].message)

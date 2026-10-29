@@ -18,7 +18,7 @@ class InvarianceTests(unittest.TestCase):
             initial_states={"s0"},
         )
 
-        trace = trace_invariant(system, invariant_states={"s0", "s1"})
+        trace = trace_invariant(transition_system=system, invariant_states={"s0", "s1"})
 
         self.assertFalse(trace.result.satisfies)
         self.assertEqual(trace.result.counterexample, ("s0", "s1", "s2"))
@@ -75,7 +75,9 @@ class InvarianceTests(unittest.TestCase):
             initial_states={"safe_start", "other_start"},
         )
 
-        result = check_invariant(system, {"safe_start", "other_start"})
+        result = check_invariant(
+            transition_system=system, invariant_states={"safe_start", "other_start"},
+        )
 
         self.assertFalse(result.satisfies)
         self.assertEqual(result.counterexample, ("other_start", "bad"))

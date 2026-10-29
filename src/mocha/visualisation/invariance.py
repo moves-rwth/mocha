@@ -18,7 +18,7 @@ __all__ = ["visualise_invariant_result", "visualise_invariant_step"]
 
 
 def visualise_invariant_step(
-        ts: TransitionSystem[State, Action, AtomicProposition],
+        transition_system: TransitionSystem[State, Action, AtomicProposition],
         step: InvariantStep[State],
         *,
         format_state: Callable[[State], str] = str,
@@ -31,7 +31,7 @@ def visualise_invariant_step(
     examination receives a double outline.
 
     Args:
-        ts: The transition system to render.
+        transition_system: The transition system to render.
         step: The invariant-checking snapshot to visualise.
         format_state: Convert a state into its displayed name.
         format_action: Convert an action into its edge-label text.
@@ -41,10 +41,10 @@ def visualise_invariant_step(
         A Graphviz directed graph produced by :func:`to_graphviz`.
 
     Raises:
-        ValueError: If the step refers to a state outside ``ts``.
+        ValueError: If the step refers to a state outside ``transition_system``.
     """
     return to_graphviz(
-        ts,
+        transition_system,
         highlighted_states=step.visited,
         current_state=step.current_state,
         format_state=format_state,
@@ -54,7 +54,7 @@ def visualise_invariant_step(
 
 
 def visualise_invariant_result(
-        ts: TransitionSystem[State, Action, AtomicProposition],
+        transition_system: TransitionSystem[State, Action, AtomicProposition],
         result: InvariantResult[State],
         *,
         format_state: Callable[[State], str] = str,
@@ -68,7 +68,7 @@ def visualise_invariant_result(
     highlighted, and the violating final state receives a double outline.
 
     Args:
-        ts: The transition system to render.
+        transition_system: The transition system to render.
         result: The invariant-checking result to visualise.
         format_state: Convert a state into its displayed name.
         format_action: Convert an action into its edge-label text.
@@ -78,11 +78,11 @@ def visualise_invariant_result(
         A Graphviz directed graph produced by :func:`to_graphviz`.
 
     Raises:
-        ValueError: If a counterexample state or transition is outside ``ts``.
+        ValueError: If a counterexample state or transition is outside ``transition_system``.
     """
     if result.counterexample is None:
         return to_graphviz(
-            ts,
+            transition_system,
             format_state=format_state,
             format_action=format_action,
             format_proposition=format_proposition,
@@ -94,7 +94,7 @@ def visualise_invariant_result(
 
     counterexample_transitions = {
         transition
-        for transition in ts.transitions()
+        for transition in transition_system.transitions()
         if (
                transition.source,
                transition.target,
@@ -102,7 +102,7 @@ def visualise_invariant_result(
     }
 
     return to_graphviz(
-        ts,
+        transition_system,
         highlighted_states=counterexample_states,
         highlighted_transitions=counterexample_transitions,
         current_state=result.counterexample[-1],

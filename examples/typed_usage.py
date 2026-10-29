@@ -31,8 +31,8 @@ def main() -> None:
         labels={2: {"done"}},
     )
 
-    reachable = compute_reachable_states(system)
-    trace = trace_reachability(system)
+    reachable = compute_reachable_states(transition_system=system)
+    trace = trace_reachability(transition_system=system)
 
     # A type checker verifies these inferred types; runtime execution does not.
     assert_type(reachable, frozenset[int])
