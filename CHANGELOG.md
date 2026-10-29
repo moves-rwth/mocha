@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Added
+
+- Transition-system rendering supports arbitrary hashable states, actions,
+  and propositions, including product-state tuples. `to_graphviz`,
+  `visualise_step`, `visualise_reachability_step`, `visualise_invariant_step`,
+  and `visualise_invariant_result` accept `format_state`, `format_action`, and
+  `format_proposition` callbacks. Defaults use `str` and preserve existing
+  string-valued calls. Formatting preserves state identities and highlighting.
+
 ### Changed
 
 - `compute_reachable_states` now returns `frozenset[State]` directly, and

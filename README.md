@@ -377,10 +377,28 @@ graph = to_graphviz(system, highlighted_states={"running"})
 graph.render("system", format="svg", cleanup=True)
 ```
 
-`to_graphviz` and the analysis-step renderers currently accept string-valued
-states, actions, and propositions. State labels are displayed as literal
-text. Actions connecting the same pair of states share an edge label, with
-highlighted actions drawn on a separate edge.
+`to_graphviz` accepts arbitrary hashable states, actions, and propositions,
+including integer states and product-state tuples. Values are displayed with
+`str` by default. Supply `format_state`, `format_action`, and
+`format_proposition` callbacks to customize their labels:
+
+```python
+integer_system = TransitionSystem.from_edges(
+    states={0, 1}, edges={(0, 1), (1, 1)}, action=2, initial_states={0},
+    atomic_propositions={3}, labels={1: {3}},
+)
+graph = to_graphviz(
+    integer_system,
+    format_state=lambda state: f"s{state}",
+    format_action=lambda action: f"a{action}",
+    format_proposition=lambda proposition: f"p{proposition}",
+)
+```
+
+Formatted labels are literal text. Formatting preserves state identities,
+including distinct states with equal displayed labels. Highlights refer to
+original state and transition values. Actions connecting the same pair of
+states share an edge label, with highlighted actions drawn on a separate edge.
 
 The returned graph supports several output workflows:
 
@@ -396,7 +414,8 @@ package; rendering an image also needs the Graphviz executables.
 
 `visualise_step`, `visualise_reachability_step`, `visualise_invariant_step`,
 and `visualise_invariant_result` turn analysis snapshots and results into the
-same kind of graph.
+same kind of graph. They accept the same three formatting callbacks and support
+the same generic state, action, and proposition types.
 
 ```python
 from mocha.visualisation import visualise_reachability_step
