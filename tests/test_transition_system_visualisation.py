@@ -17,8 +17,8 @@ from mocha.visualisation import (
     to_lasso_graphviz,
     visualise_invariant_result,
     visualise_invariant_step,
+    visualise_overlay,
     visualise_reachability_step,
-    visualise_step,
 )
 
 SVG = "{http://www.w3.org/2000/svg}"
@@ -137,7 +137,7 @@ class TransitionSystemRenderingTests(unittest.TestCase):
             (visualise_invariant_step, InvariantStep(1, frozenset({0, 1}), False)),
             (visualise_invariant_result, InvariantResult(False, (0, 1))),
             (visualise_invariant_result, InvariantResult(True)),
-            (visualise_step, TransitionSystemOverlay(
+            (visualise_overlay, TransitionSystemOverlay(
                 highlighted_states=frozenset({1}),
                 highlighted_transitions=frozenset({Transition(0, 2, 1)}),
             )),

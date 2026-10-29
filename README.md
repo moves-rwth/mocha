@@ -412,9 +412,10 @@ In a Jupyter notebook, use `display(graph)` to show the graph inline.
 Building the graph or saving DOT source requires the Python `graphviz`
 package; rendering an image also needs the Graphviz executables.
 
-`visualise_step`, `visualise_reachability_step`, `visualise_invariant_step`,
-and `visualise_invariant_result` turn analysis snapshots and results into the
-same kind of graph. They accept the same three formatting callbacks and support
+`visualise_overlay` renders selections supplied in a `TransitionSystemOverlay`.
+`visualise_reachability_step`, `visualise_invariant_step`, and
+`visualise_invariant_result` turn analysis snapshots and results into the same
+kind of graph. They accept the same three formatting callbacks and support
 the same generic state, action, and proposition types.
 
 ```python

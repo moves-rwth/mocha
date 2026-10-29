@@ -22,7 +22,7 @@ from mocha.models.transition_system import (
 
 from .overlay import TransitionSystemOverlay
 
-__all__ = ["to_graphviz", "to_lasso_graphviz", "visualise_step"]
+__all__ = ["to_graphviz", "to_lasso_graphviz", "visualise_overlay"]
 
 
 def to_graphviz(
@@ -167,9 +167,9 @@ def to_graphviz(
     return graph
 
 
-def visualise_step(
+def visualise_overlay(
         ts: TransitionSystem[State, Action, AtomicProposition],
-        step: TransitionSystemOverlay[State, Action],
+        overlay: TransitionSystemOverlay[State, Action],
         *,
         format_state: Callable[[State], str] = str,
         format_action: Callable[[Action], str] = str,
@@ -179,7 +179,7 @@ def visualise_step(
 
     Args:
         ts: The transition system to render.
-        step: The overlay that identifies states and transitions to emphasize.
+        overlay: The overlay that identifies states and transitions to emphasize.
         format_state: Convert a state into its displayed name.
         format_action: Convert an action into its edge-label text.
         format_proposition: Convert an atomic proposition into its label text.
@@ -193,8 +193,8 @@ def visualise_step(
     """
     return to_graphviz(
         ts,
-        highlighted_states=step.highlighted_states,
-        highlighted_transitions=step.highlighted_transitions,
+        highlighted_states=overlay.highlighted_states,
+        highlighted_transitions=overlay.highlighted_transitions,
         format_state=format_state,
         format_action=format_action,
         format_proposition=format_proposition,

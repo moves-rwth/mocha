@@ -79,7 +79,7 @@ from .ltl_model_checking import (
     LTLModelCheckingResult,
     LTLModelCheckingStep,
     check_ltl,
-    trace_check_ltl,
+    trace_ltl,
 )
 
 from .trace import AlgorithmTrace
@@ -152,6 +152,6 @@ __all__ = [
     "LTLModelCheckingResult",
     "LTLModelCheckingStep",
     "check_ltl",
-    "trace_check_ltl",
+    "trace_ltl",
     "transition_system_automaton_product",
 ]
