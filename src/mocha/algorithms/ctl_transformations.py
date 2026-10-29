@@ -8,7 +8,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, replace
 
 from mocha.logic.ctl import (
-    Always, And, BooleanConstant, CTLFormula, CTLStateFormula,
+    Always, And, BooleanConstant, CTLFormula, CTLPathFormula, CTLStateFormula,
     Eventually, Exists, ForAll, Next, Not, Proposition, Until, WeakUntil,
     is_ctl_formula,
 )
@@ -96,15 +96,21 @@ def _first_rewrite(
         if nested is None:
             return None
         child, path, rule, before, after = nested
+        if isinstance(formula, (Exists, ForAll)):
+            assert isinstance(child, CTLPathFormula)
+            return replace(formula, operand=child), ("operand",) + path, rule, before, after
+        assert isinstance(child, CTLStateFormula)
         return replace(formula, operand=child), ("operand",) + path, rule, before, after
     if isinstance(formula, (And, Until, WeakUntil)):
         nested = _first_rewrite(formula.left)
         if nested is not None:
             child, path, rule, before, after = nested
+            assert isinstance(child, CTLStateFormula)
             return replace(formula, left=child), ("left",) + path, rule, before, after
         nested = _first_rewrite(formula.right)
         if nested is not None:
             child, path, rule, before, after = nested
+            assert isinstance(child, CTLStateFormula)
             return replace(formula, right=child), ("right",) + path, rule, before, after
         return None
     if isinstance(formula, (BooleanConstant, Proposition)):
