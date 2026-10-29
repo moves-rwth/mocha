@@ -138,16 +138,17 @@ predecessors with `pre(state, action=None)`, and iterate the relation with
 
 ## Reachability and Invariants
 
-`compute_reachable_states` finds all states reachable from any initial state,
-including the initial states themselves. `check_invariant` checks whether
-every reachable state belongs to a supplied set of allowed states. A failing
-result contains a path from an initial state to a violating state:
+`compute_reachable_states` returns a `frozenset` of all states reachable from
+any initial state, including the initial states themselves. `check_invariant`
+checks whether every reachable state belongs to a supplied set of allowed
+states. A failing result contains a path from an initial state to a violating
+state:
 
 ```python
 from mocha import check_invariant, compute_reachable_states, trace_reachability
 
 reachable = compute_reachable_states(system)
-assert reachable.reachable_states == {"idle", "running", "done"}
+assert reachable == {"idle", "running", "done"}
 
 result = check_invariant(system, {"idle", "running"})
 assert not result.satisfies
@@ -168,13 +169,16 @@ system remains unchanged; with no initial states, the result has no states.
 from mocha import reduce_to_reachable
 
 reduced = reduce_to_reachable(system)
-assert reduced.states == reachable.reachable_states
+assert reduced.states == reachable
 ```
 
 `trace_reachability`, `trace_invariant`, and `trace_persistence` return an
 `AlgorithmTrace` with the final `result` and an immutable tuple of `steps`.
 The direct algorithms also accept an `on_step` callback to stream snapshots.
-Their result and step types are exported from `mocha` and `mocha.algorithms`.
+Algorithm-specific result and step classes are exported from `mocha` and
+`mocha.algorithms`.
+For reachability, `trace.result` is the reachable-state `frozenset` directly;
+each `ReachabilityStep` still records its iteration and `reachable_states`.
 
 For a complete invariant walkthrough, see
 [examples/invariant_checking.py](https://github.com/moves-rwth/mocha/blob/main/examples/invariant_checking.py).

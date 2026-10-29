@@ -12,24 +12,11 @@ from mocha.models.transition_system import (
 )
 
 __all__ = [
-    "ReachabilityResult",
     "ReachabilityStep",
     "compute_reachable_states",
     "reduce_to_reachable",
     "trace_reachability",
 ]
-
-
-@dataclass(frozen=True)
-class ReachabilityResult(Generic[State]):
-    """The fixed-point result of a reachability analysis.
-
-    Attributes:
-        reachable_states: Every state reachable from an initial state,
-            including the initial states themselves.
-    """
-
-    reachable_states: frozenset[State]
 
 
 @dataclass(frozen=True)
@@ -50,8 +37,12 @@ def compute_reachable_states(
         ts: TransitionSystem[State, Action, AtomicProposition],
         *,
         on_step: Callable[[ReachabilityStep[State]], None] | None = None,
-) -> ReachabilityResult[State]:
+) -> frozenset[State]:
     """Find every state reachable from an initial state.
+
+    Follow all transitions regardless of their actions. The returned immutable
+    set includes all initial states and reachable terminal states. With no
+    initial states, it is empty. The input system is not modified.
 
     ``on_step`` receives an initial snapshot, followed by one snapshot for
     every expansion that discovers new states. The callback is not called for
@@ -62,7 +53,7 @@ def compute_reachable_states(
         on_step: Optional callback for progress snapshots.
 
     Returns:
-        The complete set of reachable states.
+        The complete reachable set as a ``frozenset`` of state values.
     """
     reachable_states = set(ts.initial_states)
     iteration = 0
@@ -97,9 +88,7 @@ def compute_reachable_states(
                 )
             )
 
-    return ReachabilityResult(
-        reachable_states=frozenset(reachable_states),
-    )
+    return frozenset(reachable_states)
 
 
 def reduce_to_reachable(
@@ -112,14 +101,14 @@ def reduce_to_reachable(
     With no initial states, the result has no states or transitions.
     The input system is not modified.
     """
-    reachable = compute_reachable_states(ts).reachable_states
+    reachable = compute_reachable_states(ts)
     return ts.induced_subsystem(reachable)
 
 
 def trace_reachability(
         ts: TransitionSystem[State, Action, AtomicProposition],
 ) -> AlgorithmTrace[
-    ReachabilityResult[State],
+    frozenset[State],
     ReachabilityStep[State],
 ]:
     """Run reachability analysis and retain every reported step.
@@ -128,7 +117,11 @@ def trace_reachability(
         ts: The transition system to analyse.
 
     Returns:
-        An analysis result together with its initial and expansion snapshots.
+        An ``AlgorithmTrace`` whose ``result`` is the reachable-state
+        ``frozenset`` returned by :func:`compute_reachable_states` and whose
+        ``steps`` are the initial and expansion snapshots. The last snapshot's
+        ``reachable_states`` equals ``result``. With no initial states, the
+        trace contains a single snapshot with an empty reachable set.
     """
     steps: list[ReachabilityStep[State]] = []
 

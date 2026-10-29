@@ -25,7 +25,6 @@ from .persistence import (
     trace_persistence,
 )
 from .reachability import (
-    ReachabilityResult,
     ReachabilityStep,
     compute_reachable_states,
     reduce_to_reachable,
@@ -92,7 +91,6 @@ __all__ = [
     "LTLRewriteStep",
     "PersistenceResult",
     "PersistenceStep",
-    "ReachabilityResult",
     "ReachabilityStep",
     "TransitionSystemOverlay",
     "check_invariant",

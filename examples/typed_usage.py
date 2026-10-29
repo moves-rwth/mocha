@@ -11,7 +11,13 @@ Use an installed wheel to check the type information shipped to consumers.
 
 from typing import assert_type
 
-from mocha import ReachabilityResult, TransitionSystem, compute_reachable_states
+from mocha import (
+    AlgorithmTrace,
+    ReachabilityStep,
+    TransitionSystem,
+    compute_reachable_states,
+    trace_reachability,
+)
 
 
 def main() -> None:
@@ -25,15 +31,19 @@ def main() -> None:
         labels={2: {"done"}},
     )
 
-    result = compute_reachable_states(system)
+    reachable = compute_reachable_states(system)
+    trace = trace_reachability(system)
 
     # A type checker verifies these inferred types; runtime execution does not.
-    assert_type(result, ReachabilityResult[int])
-    assert_type(result.reachable_states, frozenset[int])
+    assert_type(reachable, frozenset[int])
+    assert_type(trace, AlgorithmTrace[frozenset[int], ReachabilityStep[int]])
+    assert_type(trace.result, frozenset[int])
+    assert_type(trace.steps[0].reachable_states, frozenset[int])
 
     # This ordinary assertion checks the values at runtime: 99 is unreachable.
-    assert result.reachable_states == frozenset({0, 1, 2})
-    print(f"Reachable states: {sorted(result.reachable_states)}")
+    assert reachable == frozenset({0, 1, 2})
+    assert trace.result == reachable
+    print(f"Reachable states: {sorted(reachable)}")
 
 
 if __name__ == "__main__":

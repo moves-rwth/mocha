@@ -40,7 +40,7 @@ def main() -> None:
     )
     system = from_dict(to_dict(system))
 
-    assert compute_reachable_states(system).reachable_states == {"start", "stable"}
+    assert compute_reachable_states(system) == {"start", "stable"}
     assert check_invariant(system, {"start", "stable"}).satisfies
     invariant = check_invariant(system, {"start"})
     assert not invariant.satisfies
