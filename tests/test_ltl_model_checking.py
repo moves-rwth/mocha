@@ -12,7 +12,7 @@ names, product dead ends, input validation, and nested persistence traces.
 import unittest
 from unittest.mock import patch
 
-from mocha import check_ltl, trace_check_ltl
+from mocha import check_ltl, trace_ltl
 from mocha.io import parse_ltl
 from mocha.logic.ltl import Not
 from mocha.models import TransitionSystem
@@ -74,7 +74,7 @@ class LTLModelCheckingTests(unittest.TestCase):
         ts = system({"s0": {"p", "extra"}, "s1": {"p"}, "s2": set()},
                     {("s0", "s1"), ("s1", "s2"), ("s2", "s2")})
         formula = parse_ltl('G"p"')
-        trace = trace_check_ltl(ts, formula)
+        trace = trace_ltl(ts, formula)
         self.assertEqual(trace.steps[0].stage, "negation")
         self.assertEqual(trace.steps[0].detail, Not(formula))
         self.assertIn("Negate", trace.steps[0].message)
@@ -94,7 +94,7 @@ class LTLModelCheckingTests(unittest.TestCase):
         formula = parse_ltl('G"p"')
         reported = []
         result = check_ltl(ts, formula, on_step=reported.append)
-        trace = trace_check_ltl(ts, formula)
+        trace = trace_ltl(ts, formula)
         self.assertTrue(result.satisfies)
         self.assertIsNone(result.counterexample)
         self.assertIsNone(result.loop_start)
@@ -163,7 +163,7 @@ class LTLModelCheckingTests(unittest.TestCase):
     def test_partial_nba_product_is_completed_only_for_persistence_search(self):
         ts = system({"s0": {"p"}, "s1": set()},
                     {("s0", "s1"), ("s1", "s1")})
-        result = trace_check_ltl(ts, parse_ltl('G"p"')).result
+        result = trace_ltl(ts, parse_ltl('G"p"')).result
         self.assertTrue(result.satisfies is False)
         self.assertTrue(result.product.terminal_states)
         self.assertTrue(result.search_product.is_non_blocking())
@@ -173,7 +173,7 @@ class LTLModelCheckingTests(unittest.TestCase):
     def test_trace_uses_persistence_nested_dfs_steps(self):
         ts = system({"s0": {"p"}, "s1": set()},
                     {("s0", "s1"), ("s1", "s1")})
-        trace = trace_check_ltl(ts, parse_ltl('G"p"'))
+        trace = trace_ltl(ts, parse_ltl('G"p"'))
         operations = [step.detail.operation for step in trace.steps
                       if step.stage == "emptiness" and step.detail is not None]
         self.assertIn("outer_push", operations)

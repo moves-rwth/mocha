@@ -6,7 +6,7 @@ the property. Results retain both the automaton product used for the proof and
 the counterexample projected onto the original system's states.
 
 Use ``check_ltl(system, property)`` for the verdict and construction results, or
-``trace_check_ltl`` to retain the detailed steps. Formula interpretation starts
+``trace_ltl`` to retain the detailed steps. Formula interpretation starts
 at the initial state's label. Failed checks return a finite prefix and cycle
 representing an infinite violating path through the original system.
 """
@@ -295,7 +295,7 @@ def check_ltl(
     )
 
 
-def trace_check_ltl(
+def trace_ltl(
     system: TransitionSystem[State, Action, str], property: LTLFormula,
 ) -> AlgorithmTrace[LTLModelCheckingResult[State], LTLModelCheckingStep[State]]:
     """Check the property and retain every construction and search event in memory.
@@ -310,4 +310,4 @@ def trace_check_ltl(
     return AlgorithmTrace(result, tuple(steps))
 
 
-__all__ = ["LTLModelCheckingResult", "LTLModelCheckingStep", "check_ltl", "trace_check_ltl"]
+__all__ = ["LTLModelCheckingResult", "LTLModelCheckingStep", "check_ltl", "trace_ltl"]
