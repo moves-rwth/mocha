@@ -346,44 +346,21 @@ assert not is_ctl_formula(formula.operand)  # A bare path is not a CTL state for
 ```
 
 `Exists` and `ForAll` quantify path formulas built with `Next`, `Always`,
-`Eventually`, `Until`, and `WeakUntil`. Both existential and universal
-quantification support all five. Construct formulas with explicit quantifier
-and temporal nodes, such as `Exists(Next(p))` or `ForAll(Always(p))`.
-Compact source notation such as `EX "p"` and `AG "p"` is also accepted.
+`Eventually`, `Until`, and `WeakUntil`. Temporal nesting passes through another
+path quantifier: `AG AF "ready"` is valid CTL. Compact source notation such as
+`EX "ready"` and `AG "ready"` is accepted by `parse_ctl`.
 
-`parse_ctl` still accepts only the supported CTL fragment. Constructors reject
-unquantified temporal operands, such as `Always(Next(p))`. `is_ctl_formula`
-checks the fragment recursively, independently of normal form.
-`Exists(Eventually(p))` and `Exists(WeakUntil(p, q))` have source spellings
-`EF "p"` and `E("p" W "q")`. Normalization rewrites them using existential
-until and always.
-CTL normal forms and their rewrite traces live in
-`mocha.algorithms.ctl_transformations`, following the LTL organization.
-`CTLRewriteStep`, `to_existential_normal_form`, and
-`trace_existential_normal_form` are also exported from `mocha.algorithms`
-and `mocha`.
-`model_check_ctl` evaluates formulas in existential normal form and reports
-satisfaction sets only for state subformulas of that normalized formula.
-Rewrite trace paths include the extra quantifier/temporal level;
-the proposition in `Exists(Next(p))` is at `("operand", "operand")`.
-The `EU` and `EG` searches follow Algorithms 15 and 16 in *Principles of
-Model Checking*. With `detail="reasoning"`, their trace records the candidate
-set `T`, pending set `E`, and processed state after each worklist iteration;
-the `EG` trace also includes successor counters.
+## CTL Model Checking
 
-CTL model checking requires a transition system without terminal states:
-every state, including unreachable ones, must have at least one outgoing
-transition. A terminal state causes `ValueError`. The self-loop at `done`
-in the following example ensures that paths continue infinitely.
-
-The CTL workflow keeps each stage explicit: construct or parse a formula,
-rewrite it into existential normal form, then compute the state-subformula
-sets. For example, every path in this system eventually reaches `done`:
+`model_check_ctl` computes the states satisfying a CTL formula. Parse or
+construct the formula, explicitly rewrite it into existential normal form,
+then check it. For example, every path in this system eventually reaches
+`done`:
 
 ```python
 from mocha import (
     TransitionSystem, model_check_ctl, parse_ctl,
-    to_existential_normal_form, trace_ctl_model_checking,
+    to_existential_normal_form,
 )
 
 ctl_system = TransitionSystem.from_edges(
@@ -397,11 +374,16 @@ ctl_enf = to_existential_normal_form(ctl_formula)  # AF done ≡ ¬EG ¬done
 ctl_result = model_check_ctl(ctl_system, ctl_enf)
 assert ctl_result.satisfies
 assert ctl_result.satisfying_states == {"waiting", "done"}
-
-ctl_trace = trace_ctl_model_checking(ctl_system, ctl_enf, detail="reasoning")
-assert ctl_trace.result == ctl_result
 ```
 
+`satisfies` checks every initial state. CTL checking requires every state,
+including unreachable ones, to have an outgoing transition and every formula
+proposition to be declared in the system. The self-loop at `done` ensures
+that paths continue infinitely.
+
+The [CTL guide](https://github.com/moves-rwth/mocha/blob/main/docs/ctl.md)
+explains formula syntax, existential normal form, rewrite traces, satisfaction
+sets, and detailed model-checking traces.
 
 ## LTL Model Checking
 
