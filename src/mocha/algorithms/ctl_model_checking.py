@@ -146,7 +146,7 @@ def _require_enf(formula: CTLStateFormula) -> None:
 
 
 def _exists_until(
-    ts: TransitionSystem[State, Action, str],
+    transition_system: TransitionSystem[State, Action, str],
     formula: Exists,
     sat_left: frozenset[State],
     sat_right: frozenset[State],
@@ -157,7 +157,7 @@ def _exists_until(
 
     ``sat_left`` and ``sat_right`` are ``Sat(Φ)`` and ``Sat(Ψ)``.
     ``pending_states`` is ``E``, ``satisfying_states`` is ``T``,
-    ``processed_state`` is ``s′``, and ``ts.pre`` implements ``Pre``.
+    ``processed_state`` is ``s′``, and ``transition_system.pre`` implements ``Pre``.
 
     """
     pending_states = set(sat_right)  # E
@@ -181,7 +181,7 @@ def _exists_until(
     while pending_states:
         processed_state = pending_states.pop()  # s′; arbitrary choice, as in Algorithm 15.
         added: set[State] = set()  # Track discoveries only for the trace.
-        for state in ts.pre(processed_state):
+        for state in transition_system.pre(processed_state):
             if state in sat_left and state not in satisfying_states:
                 pending_states.add(state)
                 satisfying_states.add(state)
@@ -211,7 +211,7 @@ def _exists_until(
 
 
 def _exists_globally(
-    ts: TransitionSystem[State, Action, str],
+    transition_system: TransitionSystem[State, Action, str],
     formula: Exists,
     sat_operand: frozenset[State],
     *,
@@ -221,14 +221,14 @@ def _exists_globally(
 
     ``sat_operand`` is ``Sat(Φ)``, ``pending_states`` is ``E``,
     ``candidate_states`` is ``T``, and ``processed_state`` is ``s′``.
-    ``ts.post`` and ``ts.pre`` implement ``Post`` and ``Pre``.
+    ``transition_system.post`` and ``transition_system.pre`` implement ``Post`` and ``Pre``.
     The successor counter retains the name ``count`` and satisfies
     ``count[s] = |Post(s) ∩ (T ∪ E)|``. The graph must be non-blocking.
 
     """
-    pending_states = set(ts.states - sat_operand)  # E
+    pending_states = set(transition_system.states - sat_operand)  # E
     candidate_states = set(sat_operand)  # T
-    count = {state: len(ts.post(state)) for state in sat_operand}
+    count = {state: len(transition_system.post(state)) for state in sat_operand}
     if on_step is not None:
         on_step(CTLFixedPointStep(
             formula=formula,
@@ -248,7 +248,7 @@ def _exists_globally(
         # Extra bookkeeping for the trace; only count, T, and E drive the search.
         removed: set[State] = set()
         checked: set[State] = set()
-        for state in ts.pre(processed_state):
+        for state in transition_system.pre(processed_state):
             if state in candidate_states:
                 count[state] -= 1
                 checked.add(state)
@@ -261,7 +261,7 @@ def _exists_globally(
             # Trace after the entire predecessor loop. Checks show successors in T;
             # their sizes can differ from count[s], which counts successors in T ∪ E.
             checks = frozenset(
-                CTLSuccessorCheck(state, ts.post(state) & candidate_states)
+                CTLSuccessorCheck(state, transition_system.post(state) & candidate_states)
                 for state in checked
             )
             on_step(CTLFixedPointStep(
@@ -281,7 +281,7 @@ def _exists_globally(
 
 
 def model_check_ctl(
-    ts: TransitionSystem[State, Action, str],
+    transition_system: TransitionSystem[State, Action, str],
     formula: CTLStateFormula,
     *,
     detail: Detail = "sets",
@@ -312,13 +312,13 @@ def model_check_ctl(
         raise ValueError("CTL model checking requires a state formula in the supported CTL fragment")
     _require_enf(formula)
 
-    states = ts.states
-    if terminal := ts.terminal_states:
+    states = transition_system.states
+    if terminal := transition_system.terminal_states:
         raise ValueError(f"CTL model checking requires no terminal states: {terminal!r}")
-    unknown = propositions(formula) - ts.atomic_propositions
+    unknown = propositions(formula) - transition_system.atomic_propositions
     if unknown:
         raise ValueError(f"Unknown atomic propositions: {sorted(unknown)!r}")
-    initial_states = ts.initial_states
+    initial_states = transition_system.initial_states
 
     # Build Sat bottom-up. Structurally equal subformulae share one table entry,
     # even when they occur at several positions in the formula tree.
@@ -356,7 +356,9 @@ def model_check_ctl(
         if isinstance(node, BooleanConstant):
             return record_result(node, states, "true", (), "Sat(true) = S")
         if isinstance(node, Proposition):
-            sat_formula = frozenset(state for state in states if node.name in ts.labels(state))
+            sat_formula = frozenset(
+                state for state in states if node.name in transition_system.labels(state)
+            )
             return record_result(node, sat_formula, "proposition", (),
                           f"Sat({node}) = {{s ∈ S | {node.name!r} ∈ L(s)}}")
         if isinstance(node, Not):
@@ -373,12 +375,12 @@ def model_check_ctl(
             child = node.operand.operand
             sat_operand = evaluate(child)
             sat_formula = frozenset(
-                state for state in states if ts.post(state) & sat_operand
+                state for state in states if transition_system.post(state) & sat_operand
             )
             if detail == "reasoning":
                 # Tracing extension: collect witnesses separately from computing Sat(EX).
                 checks = frozenset(
-                    CTLSuccessorCheck(state, ts.post(state) & sat_operand)
+                    CTLSuccessorCheck(state, transition_system.post(state) & sat_operand)
                     for state in states
                 )
                 emit(CTLPredecessorStep(
@@ -394,7 +396,7 @@ def model_check_ctl(
             sat_left = evaluate(path.left)
             sat_right = evaluate(path.right)
             sat_formula = _exists_until(
-                ts, node, sat_left, sat_right,
+                transition_system, node, sat_left, sat_right,
                 on_step=emit if detail == "reasoning" else None,
             )
             return record_result(node, sat_formula, "eu",
@@ -405,7 +407,7 @@ def model_check_ctl(
             child = node.operand.operand
             sat_operand = evaluate(child)
             sat_formula = _exists_globally(
-                ts, node, sat_operand,
+                transition_system, node, sat_operand,
                 on_step=emit if detail == "reasoning" else None,
             )
             return record_result(node, sat_formula, "eg", ((child, sat_operand),),
@@ -424,7 +426,7 @@ def model_check_ctl(
 
 
 def trace_ctl_model_checking(
-    ts: TransitionSystem[State, Action, str],
+    transition_system: TransitionSystem[State, Action, str],
     formula: CTLStateFormula,
     *,
     detail: Detail = "sets",
@@ -432,7 +434,7 @@ def trace_ctl_model_checking(
     """Collect the model checker's callback events into an ``AlgorithmTrace``."""
     # Retain the callback events without adding any algorithm iterations.
     steps: list[CTLModelCheckingStep[State]] = []
-    result = model_check_ctl(ts, formula, detail=detail, on_step=steps.append)
+    result = model_check_ctl(transition_system, formula, detail=detail, on_step=steps.append)
     return AlgorithmTrace(result=result, steps=tuple(steps))
 
 

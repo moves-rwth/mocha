@@ -127,7 +127,7 @@ ctl_system = TransitionSystem.from_edges(
     action="step", initial_states={"waiting"},
     atomic_propositions={"done"}, labels={"done": {"done"}},
 )
-ctl_result = model_check_ctl(ctl_system, ctl_enf)
+ctl_result = model_check_ctl(transition_system=ctl_system, formula=ctl_enf)
 assert ctl_result.satisfies
 assert ctl_result.satisfying_states == {"waiting", "done"}
 assert not ctl_result.violating_initial_states
@@ -172,7 +172,9 @@ and an immutable tuple of `steps`. Both it and `model_check_ctl` accept
 ```python
 from mocha import CTLFixedPointStep, trace_ctl_model_checking
 
-ctl_trace = trace_ctl_model_checking(ctl_system, ctl_enf, detail="reasoning")
+ctl_trace = trace_ctl_model_checking(
+    transition_system=ctl_system, formula=ctl_enf, detail="reasoning",
+)
 assert ctl_trace.result == ctl_result
 for step in ctl_trace.steps:
     if isinstance(step, CTLFixedPointStep):

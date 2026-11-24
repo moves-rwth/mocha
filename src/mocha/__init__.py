@@ -156,7 +156,6 @@ __all__ = [
     "PersistenceResult",
     "PersistenceStep",
     "PathFormula",
-    "ReachabilityResult",
     "ReachabilityStep",
     "State",
     "StateFormula",

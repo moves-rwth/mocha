@@ -4,6 +4,13 @@
 
 ### Added
 
+- CTL parsing with `parse_ctl`, transformation to existential normal form
+  with `to_existential_normal_form`, and model checking of ENF formulas with
+  `model_check_ctl`. Results include satisfaction sets for each state
+  subformula and a verdict over all initial states. Rewrite traces and
+  model-checking traces expose normalization steps, successor checks, and
+  fixed-point search snapshots through `trace_existential_normal_form` and
+  `trace_ctl_model_checking`.
 - Transition-system rendering supports arbitrary hashable states, actions,
   and propositions, including product-state tuples. `to_graphviz`,
   `visualise_overlay`, `visualise_reachability_step`, `visualise_invariant_step`,

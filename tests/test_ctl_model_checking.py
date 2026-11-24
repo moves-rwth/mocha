@@ -33,6 +33,71 @@ def _system() -> TransitionSystem[str, str, str]:
 
 
 class CTLModelCheckingTests(unittest.TestCase):
+    def test_empty_system_has_empty_satisfaction_sets_and_a_vacuous_verdict(self) -> None:
+        system = TransitionSystem[str, str, str].from_components(
+            states=set(), actions=set(), transitions=set(),
+            atomic_propositions={"p"},
+        )
+        for source in (
+            'true', 'false', '"p"', '!"p"', 'EX "p"',
+            'E(true U "p")', 'EG "p"',
+        ):
+            with self.subTest(source=source):
+                formula = to_existential_normal_form(parse_ctl(source))
+                result = model_check_ctl(system, formula)
+                self.assertEqual(result.satisfying_states, frozenset())
+                self.assertEqual(result.initial_states, frozenset())
+                self.assertTrue(result.satisfies)
+                self.assertEqual(result.violating_initial_states, frozenset())
+                self.assertEqual(result.set_for(formula), frozenset())
+                self.assertTrue(result.subformula_sets)
+                for row in result.subformula_sets:
+                    self.assertEqual(row.satisfying_states, frozenset())
+                for detail in ("sets", "reasoning"):
+                    with self.subTest(detail=detail):
+                        trace = trace_ctl_model_checking(system, formula, detail=detail)
+                        self.assertEqual(trace.result, result)
+                        self.assertTrue(trace.steps)
+
+    def test_no_initial_states_still_computes_satisfaction_sets_for_all_states(self) -> None:
+        system = _system()
+        system.set_initial("s0", False)
+        for source, expected in (
+            ('EG "p"', frozenset({"s0", "s1"})),
+            ('false', frozenset()),
+        ):
+            with self.subTest(source=source):
+                formula = to_existential_normal_form(parse_ctl(source))
+                result = model_check_ctl(system, formula)
+                self.assertEqual(result.initial_states, frozenset())
+                self.assertEqual(result.satisfying_states, expected)
+                self.assertEqual(result.set_for(formula), expected)
+                self.assertTrue(result.satisfies)
+                self.assertEqual(result.violating_initial_states, frozenset())
+                for detail in ("sets", "reasoning"):
+                    with self.subTest(detail=detail):
+                        trace = trace_ctl_model_checking(system, formula, detail=detail)
+                        self.assertEqual(trace.result, result)
+
+    def test_every_initial_state_must_satisfy_the_formula(self) -> None:
+        formula = parse_ctl('EG "p"')
+        for additional_initial, satisfies, violations in (
+            ("s1", True, frozenset()),
+            ("s2", False, frozenset({"s2"})),
+        ):
+            with self.subTest(additional_initial=additional_initial):
+                system = _system()
+                system.set_initial(additional_initial)
+                result = model_check_ctl(system, formula)
+                self.assertEqual(result.initial_states, frozenset({"s0", additional_initial}))
+                self.assertEqual(result.satisfying_states, frozenset({"s0", "s1"}))
+                self.assertEqual(result.satisfies, satisfies)
+                self.assertEqual(result.violating_initial_states, violations)
+                for detail in ("sets", "reasoning"):
+                    with self.subTest(detail=detail):
+                        trace = trace_ctl_model_checking(system, formula, detail=detail)
+                        self.assertEqual(trace.result, result)
+
     def test_eventually_and_weak_until_after_normalization(self) -> None:
         system = _system()
         for source, expected in (
@@ -112,7 +177,9 @@ class CTLModelCheckingTests(unittest.TestCase):
 
     def test_reasoning_shows_successor_checks_and_backward_search(self) -> None:
         formula = parse_ctl('EX "q" & E("p" U "q") & EG "p"')
-        trace = trace_ctl_model_checking(_system(), formula, detail="reasoning")
+        trace = trace_ctl_model_checking(
+            transition_system=_system(), formula=formula, detail="reasoning",
+        )
         summaries = tuple(step for step in trace.steps if isinstance(step, CTLSubformulaStep))
         self.assertEqual(summaries, trace.result.subformula_sets)
         self.assertTrue(all(step.explanation for step in summaries))
@@ -182,7 +249,8 @@ class CTLModelCheckingTests(unittest.TestCase):
 
         callback_steps = []
         direct = model_check_ctl(
-            _system(), formula, detail="reasoning", on_step=callback_steps.append,
+            transition_system=_system(), formula=formula,
+            detail="reasoning", on_step=callback_steps.append,
         )
         self.assertEqual(direct, trace.result)
         self.assertEqual(tuple(callback_steps), trace.steps)
