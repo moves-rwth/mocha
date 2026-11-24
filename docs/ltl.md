@@ -167,14 +167,14 @@ a non-accepting sink for persistence search. `product_counterexample` retains
 the automaton component of each path position; `counterexample` projects it
 onto the original system while preserving the cycle boundary.
 
-`trace_check_ltl` collects the steps for negation, GNBA translation, NBA
+`trace_ltl` collects the steps for negation, GNBA translation, NBA
 conversion, product construction, emptiness search, and the verdict. Detailed
 translation and depth-first-search events are available in each step's `detail`:
 
 ```python
-from mocha import trace_check_ltl
+from mocha import trace_ltl
 
-ltl_trace = trace_check_ltl(ltl_system, ltl_property)
+ltl_trace = trace_ltl(ltl_system, ltl_property)
 assert not ltl_trace.result.satisfies
 for step in ltl_trace.steps:
     print(step.iteration, step.stage, step.message)

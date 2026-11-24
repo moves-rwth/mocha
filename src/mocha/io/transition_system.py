@@ -50,7 +50,7 @@ def validate_dict(data: object) -> None:
 
 
 def to_dict(
-        ts: TransitionSystem[str, str, str],
+        transition_system: TransitionSystem[str, str, str],
 ) -> dict[str, object]:
     """Convert a string-valued transition system to a JSON-compatible dict.
 
@@ -60,17 +60,17 @@ def to_dict(
     return {
         "schema_version": 1,
         "kind": "transition_system",
-        "states": sorted(ts.states),
-        "actions": sorted(ts.actions),
-        "initial_states": sorted(ts.initial_states),
-        "atomic_propositions": sorted(ts.atomic_propositions),
+        "states": sorted(transition_system.states),
+        "actions": sorted(transition_system.actions),
+        "initial_states": sorted(transition_system.initial_states),
+        "atomic_propositions": sorted(transition_system.atomic_propositions),
         "labels": {
-            state: sorted(ts.labels(state))
-            for state in sorted(ts.states)
+            state: sorted(transition_system.labels(state))
+            for state in sorted(transition_system.states)
         },
         "transitions": [
             [source, action, target]
-            for source, action, target in sorted(ts.transitions())
+            for source, action, target in sorted(transition_system.transitions())
         ],
     }
 
@@ -104,17 +104,17 @@ def from_dict(
     )
 
 def save_transition_system(
-        ts: TransitionSystem[str, str, str],
+        transition_system: TransitionSystem[str, str, str],
         path: str | Path,
 ) -> None:
-    """Write ``ts`` as UTF-8, indented JSON to ``path``.
+    """Write ``transition_system`` as UTF-8, indented JSON to ``path``.
 
     Existing files at ``path`` are replaced. The output ends in a newline and
     uses deterministic ordering supplied by :func:`to_dict`.
     """
     with Path(path).open("w", encoding="utf-8") as file:
         json.dump(
-            to_dict(ts),
+            to_dict(transition_system),
             file,
             indent=2,
             ensure_ascii=False,

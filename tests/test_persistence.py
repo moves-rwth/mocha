@@ -20,7 +20,7 @@ class PersistenceTests(unittest.TestCase):
         )
         visited: set[str] = set()
 
-        cycle = cycle_check(system, "start", visited)
+        cycle = cycle_check(transition_system=system, start="start", visited=visited)
 
         self.assertEqual(cycle, ("start", "middle", "start"))
         self.assertEqual(visited, {"start", "middle"})
@@ -41,7 +41,7 @@ class PersistenceTests(unittest.TestCase):
             },
         )
 
-        result = check_persistence(system, "p")
+        result = check_persistence(transition_system=system, proposition="p")
 
         self.assertTrue(result.satisfies)
         self.assertIsNone(result.counterexample)

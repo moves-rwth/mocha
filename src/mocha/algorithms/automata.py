@@ -102,7 +102,7 @@ def _valuations(
 
 
 def transition_system_automaton_product(
-        ts: TransitionSystem[State, Action, AtomicProposition],
+        transition_system: TransitionSystem[State, Action, AtomicProposition],
         automaton: (
             FiniteAutomaton[AutomatonState, frozenset[AtomicProposition]]
             | NBA[AutomatonState, frozenset[AtomicProposition]]
@@ -112,7 +112,7 @@ def transition_system_automaton_product(
     Action,
     AutomatonState,
 ]:
-    r"""Construct the standard product of ``ts`` and a finite automaton or NBA.
+    r"""Construct the product of ``transition_system`` and a finite automaton or NBA.
 
     The automaton alphabet must be exactly ``2^AP``, where ``AP`` is the
     transition system's atomic-proposition set. Product states are ``(s, q)``.
@@ -133,7 +133,7 @@ def transition_system_automaton_product(
     ``automaton.accepting_states``.
 
     Args:
-        ts: The labelled transition system.
+        transition_system: The labelled transition system.
         automaton: A finite automaton or NBA over the valuations ``2^AP``.
 
     Returns:
@@ -142,7 +142,7 @@ def transition_system_automaton_product(
     Raises:
         ValueError: If the automaton alphabet differs from ``2^AP``.
     """
-    expected_alphabet = _valuations(ts.atomic_propositions)
+    expected_alphabet = _valuations(transition_system.atomic_propositions)
     if automaton.alphabet != expected_alphabet:
         raise ValueError(
             "Automaton alphabet must equal the transition system's "
@@ -152,16 +152,16 @@ def transition_system_automaton_product(
 
     product_states = {
         (state, automaton_state)
-        for state in ts.states
+        for state in transition_system.states
         for automaton_state in automaton.states
     }
     initial_states = {
         (state, automaton_state)
-        for state in ts.initial_states
+        for state in transition_system.initial_states
         for initial_automaton_state in automaton.initial_states
         for automaton_state in automaton.post(
             initial_automaton_state,
-            ts.labels(state),
+            transition_system.labels(state),
         )
     }
     transitions: set[
@@ -172,11 +172,11 @@ def transition_system_automaton_product(
         ]
     ] = set()
 
-    for transition in ts.transitions():
+    for transition in transition_system.transitions():
         for automaton_state in automaton.states:
             for next_automaton_state in automaton.post(
                     automaton_state,
-                    ts.labels(transition.target),
+                    transition_system.labels(transition.target),
             ):
                 transitions.add(
                     (
@@ -188,7 +188,7 @@ def transition_system_automaton_product(
 
     return TransitionSystem.from_components(
         states=product_states,
-        actions=ts.actions,
+        actions=transition_system.actions,
         transitions=transitions,
         initial_states=initial_states,
         atomic_propositions=automaton.states,

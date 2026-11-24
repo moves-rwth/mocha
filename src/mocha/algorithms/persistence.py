@@ -67,7 +67,7 @@ class PersistenceStep(Generic[State]):
 
 
 def cycle_check(
-        ts: TransitionSystem[State, Action, AtomicProposition],
+        transition_system: TransitionSystem[State, Action, AtomicProposition],
         start: State,
         visited: set[State],
         *,
@@ -82,7 +82,7 @@ def cycle_check(
     stack operation after it has occurred.
 
     Args:
-        ts: The transition system to search.
+        transition_system: The transition system to search.
         start: The state that must lie on the discovered cycle.
         visited: States already visited by the inner DFS.
         on_step: Optional callback receiving an operation, its state, and the
@@ -93,9 +93,9 @@ def cycle_check(
         of ``start``, or ``None`` if no such cycle is found.
 
     Raises:
-        ValueError: If ``start`` is not a state of ``ts``.
+        ValueError: If ``start`` is not a state of ``transition_system``.
     """
-    if start not in ts.states:
+    if start not in transition_system.states:
         raise ValueError(f"Unknown state {start!r}")
 
     stack: list[State] = [start]
@@ -110,11 +110,11 @@ def cycle_check(
     while stack:
         state = stack[-1]
 
-        if start in ts.post(state):
+        if start in transition_system.post(state):
             report("cycle_found", start)
             return tuple(stack + [start])
 
-        unvisited_successors = ts.post(state) - visited
+        unvisited_successors = transition_system.post(state) - visited
         if unvisited_successors:
             successor = next(iter(unvisited_successors))
             stack.append(successor)
@@ -128,12 +128,12 @@ def cycle_check(
 
 
 def check_persistence(
-        ts: TransitionSystem[State, Action, AtomicProposition],
+        transition_system: TransitionSystem[State, Action, AtomicProposition],
         proposition: AtomicProposition,
         *,
         on_step: Callable[[PersistenceStep[State]], None] | None = None,
 ) -> PersistenceResult[State]:
-    """Check whether ``ts`` satisfies the persistence property ``◇□Φ``.
+    """Check whether ``transition_system`` satisfies the persistence property ``◇□Φ``.
 
     This implements Algorithm 8, "Persistence checking by nested depth-first
     search", from *Principles of Model Checking*. The outer DFS finds reachable
@@ -142,7 +142,7 @@ def check_persistence(
     deliberately shared across calls, exactly as in the algorithm.
 
     Args:
-        ts: A finite transition system without terminal states.
+        transition_system: A finite transition system without terminal states.
         proposition: The atomic proposition ``Φ`` that must eventually hold
             forever on every run.
         on_step: Optional callback receiving the initial configuration and
@@ -152,12 +152,12 @@ def check_persistence(
         A successful result, or a lasso-shaped counterexample to ``◇□Φ``.
 
     Raises:
-        ValueError: If ``proposition`` is undeclared or ``ts`` has a terminal
+        ValueError: If ``proposition`` is undeclared or ``transition_system`` has a terminal
             state.
     """
-    if proposition not in ts.atomic_propositions:
+    if proposition not in transition_system.atomic_propositions:
         raise ValueError(f"Unknown atomic proposition {proposition!r}")
-    if not ts.is_non_blocking():
+    if not transition_system.is_non_blocking():
         raise ValueError(
             "Persistence checking requires a transition system without "
             "terminal states"
@@ -186,7 +186,7 @@ def check_persistence(
 
     report("initialize")
 
-    while unvisited_initial_states := ts.initial_states - outer_visited:
+    while unvisited_initial_states := transition_system.initial_states - outer_visited:
         initial_state = next(iter(unvisited_initial_states))
         outer_stack.append(initial_state)
         outer_visited.add(initial_state)
@@ -194,7 +194,7 @@ def check_persistence(
 
         while outer_stack:
             state = outer_stack[-1]
-            unvisited_successors = ts.post(state) - outer_visited
+            unvisited_successors = transition_system.post(state) - outer_visited
 
             if unvisited_successors:
                 successor = next(iter(unvisited_successors))
@@ -205,11 +205,11 @@ def check_persistence(
 
             popped_state = outer_stack.pop()
             report("outer_pop", popped_state)
-            if proposition in ts.labels(state):
+            if proposition in transition_system.labels(state):
                 continue
 
             cycle = cycle_check(
-                ts,
+                transition_system,
                 state,
                 inner_visited,
                 on_step=lambda operation, inner_state, inner_stack: report(
@@ -228,13 +228,13 @@ def check_persistence(
 
 
 def trace_persistence(
-        ts: TransitionSystem[State, Action, AtomicProposition],
+        transition_system: TransitionSystem[State, Action, AtomicProposition],
         proposition: AtomicProposition,
 ) -> AlgorithmTrace[PersistenceResult[State], PersistenceStep[State]]:
     """Run persistence checking and retain every nested-DFS configuration.
 
     Args:
-        ts: A finite transition system without terminal states.
+        transition_system: A finite transition system without terminal states.
         proposition: The atomic proposition ``Φ`` that must eventually hold
             forever on every run.
 
@@ -242,11 +242,11 @@ def trace_persistence(
         The persistence result and snapshots suitable for a worked solution.
 
     Raises:
-        ValueError: If ``proposition`` is undeclared or ``ts`` has a terminal
+        ValueError: If ``proposition`` is undeclared or ``transition_system`` has a terminal
             state.
     """
     steps: list[PersistenceStep[State]] = []
-    result = check_persistence(ts, proposition, on_step=steps.append)
+    result = check_persistence(transition_system, proposition, on_step=steps.append)
     return AlgorithmTrace(result=result, steps=tuple(steps))
 
 

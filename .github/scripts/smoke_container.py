@@ -20,7 +20,7 @@ def main() -> None:
     )
     # Loading validates the schema bundled in the installed wheel.
     system = from_dict(to_dict(system))
-    assert compute_reachable_states(system).reachable_states == {"start", "done"}
+    assert compute_reachable_states(system) == {"start", "done"}
     assert check_invariant(system, {"start", "done"}).satisfies
     violation = check_invariant(system, {"start"})
     assert not violation.satisfies

@@ -1,5 +1,36 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Transition-system rendering supports arbitrary hashable states, actions,
+  and propositions, including product-state tuples. `to_graphviz`,
+  `visualise_overlay`, `visualise_reachability_step`, `visualise_invariant_step`,
+  and `visualise_invariant_result` accept `format_state`, `format_action`, and
+  `format_proposition` callbacks. Defaults use `str` and preserve existing
+  string-valued calls. Formatting preserves state identities and highlighting.
+
+### Changed
+
+- Renamed `TransitionRelationStep.input` to `valuation`, including its
+  constructor keyword. Markdown explanations now label it as "Valuation".
+- Standardized transition-system parameters as `transition_system` across
+  algorithms, I/O, and rendering helpers. Replace keyword arguments `ts=`
+  and `system=` with `transition_system=`. Positional calls are unchanged.
+- Renamed `trace_check_ltl` to `trace_ltl` in `mocha`, `mocha.algorithms`, and
+  `mocha.algorithms.ltl_model_checking`.
+- Renamed `visualise_step` to `visualise_overlay` in `mocha.visualisation`
+  and `mocha.visualisation.transition_system`. Its `step` keyword argument
+  is now `overlay`. The old function names have been removed; update imports
+  and keyword arguments to the new names.
+- `compute_reachable_states` now returns `frozenset[State]` directly, and
+  `trace_reachability(...).result` contains that same reachable set.
+- Removed `ReachabilityResult` from the public API. Replace
+  `compute_reachable_states(system).reachable_states` with
+  `compute_reachable_states(system)`. `ReachabilityStep` still exposes
+  `iteration` and `reachable_states` for progress snapshots.
+
 ## 0.1.0
 
 First stable release of MoChA, a teaching library for model checking.

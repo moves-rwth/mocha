@@ -14,7 +14,7 @@ __all__ = [
     "visualise_invariant_result",
     "visualise_persistence_counterexample",
     "visualise_reachability_step",
-    "visualise_step",
+    "visualise_overlay",
 ]
 
 
@@ -28,13 +28,13 @@ def __getattr__(name: str) -> Any:
         from .automaton import to_graphviz as to_automaton_graphviz
 
         return to_automaton_graphviz
-    if name in {"to_graphviz", "to_lasso_graphviz", "visualise_step"}:
-        from .transition_system import to_graphviz, to_lasso_graphviz, visualise_step
+    if name in {"to_graphviz", "to_lasso_graphviz", "visualise_overlay"}:
+        from .transition_system import to_graphviz, to_lasso_graphviz, visualise_overlay
 
         return {
             "to_graphviz": to_graphviz,
             "to_lasso_graphviz": to_lasso_graphviz,
-            "visualise_step": visualise_step,
+            "visualise_overlay": visualise_overlay,
         }[name]
     if name == "visualise_persistence_counterexample":
         from .persistence import visualise_persistence_counterexample

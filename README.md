@@ -139,16 +139,17 @@ predecessors with `pre(state, action=None)`, and iterate the relation with
 
 ## Reachability and Invariants
 
-`compute_reachable_states` finds all states reachable from any initial state,
-including the initial states themselves. `check_invariant` checks whether
-every reachable state belongs to a supplied set of allowed states. A failing
-result contains a path from an initial state to a violating state:
+`compute_reachable_states` returns a `frozenset` of all states reachable from
+any initial state, including the initial states themselves. `check_invariant`
+checks whether every reachable state belongs to a supplied set of allowed
+states. A failing result contains a path from an initial state to a violating
+state:
 
 ```python
 from mocha import check_invariant, compute_reachable_states, trace_reachability
 
 reachable = compute_reachable_states(system)
-assert reachable.reachable_states == {"idle", "running", "done"}
+assert reachable == {"idle", "running", "done"}
 
 result = check_invariant(system, {"idle", "running"})
 assert not result.satisfies
@@ -169,13 +170,16 @@ system remains unchanged; with no initial states, the result has no states.
 from mocha import reduce_to_reachable
 
 reduced = reduce_to_reachable(system)
-assert reduced.states == reachable.reachable_states
+assert reduced.states == reachable
 ```
 
 `trace_reachability`, `trace_invariant`, and `trace_persistence` return an
 `AlgorithmTrace` with the final `result` and an immutable tuple of `steps`.
 The direct algorithms also accept an `on_step` callback to stream snapshots.
-Their result and step types are exported from `mocha` and `mocha.algorithms`.
+Algorithm-specific result and step classes are exported from `mocha` and
+`mocha.algorithms`.
+For reachability, `trace.result` is the reachable-state `frozenset` directly;
+each `ReachabilityStep` still records its iteration and `reachable_states`.
 
 For a complete invariant walkthrough, see
 [examples/invariant_checking.py](https://github.com/moves-rwth/mocha/blob/main/examples/invariant_checking.py).
@@ -434,10 +438,28 @@ graph = to_graphviz(system, highlighted_states={"running"})
 graph.render("system", format="svg", cleanup=True)
 ```
 
-`to_graphviz` and the analysis-step renderers currently accept string-valued
-states, actions, and propositions. State labels are displayed as literal
-text. Actions connecting the same pair of states share an edge label, with
-highlighted actions drawn on a separate edge.
+`to_graphviz` accepts arbitrary hashable states, actions, and propositions,
+including integer states and product-state tuples. Values are displayed with
+`str` by default. Supply `format_state`, `format_action`, and
+`format_proposition` callbacks to customize their labels:
+
+```python
+integer_system = TransitionSystem.from_edges(
+    states={0, 1}, edges={(0, 1), (1, 1)}, action=2, initial_states={0},
+    atomic_propositions={3}, labels={1: {3}},
+)
+graph = to_graphviz(
+    integer_system,
+    format_state=lambda state: f"s{state}",
+    format_action=lambda action: f"a{action}",
+    format_proposition=lambda proposition: f"p{proposition}",
+)
+```
+
+Formatted labels are literal text. Formatting preserves state identities,
+including distinct states with equal displayed labels. Highlights refer to
+original state and transition values. Actions connecting the same pair of
+states share an edge label, with highlighted actions drawn on a separate edge.
 
 The returned graph supports several output workflows:
 
@@ -451,9 +473,11 @@ In a Jupyter notebook, use `display(graph)` to show the graph inline.
 Building the graph or saving DOT source requires the Python `graphviz`
 package; rendering an image also needs the Graphviz executables.
 
-`visualise_step`, `visualise_reachability_step`, `visualise_invariant_step`,
-and `visualise_invariant_result` turn analysis snapshots and results into the
-same kind of graph.
+`visualise_overlay` renders selections supplied in a `TransitionSystemOverlay`.
+`visualise_reachability_step`, `visualise_invariant_step`, and
+`visualise_invariant_result` turn analysis snapshots and results into the same
+kind of graph. They accept the same three formatting callbacks and support
+the same generic state, action, and proposition types.
 
 ```python
 from mocha.visualisation import visualise_reachability_step

@@ -41,7 +41,6 @@ from .persistence import (
     trace_persistence,
 )
 from .reachability import (
-    ReachabilityResult,
     ReachabilityStep,
     compute_reachable_states,
     reduce_to_reachable,
@@ -96,7 +95,7 @@ from .ltl_model_checking import (
     LTLModelCheckingResult,
     LTLModelCheckingStep,
     check_ltl,
-    trace_check_ltl,
+    trace_ltl,
 )
 
 from .trace import AlgorithmTrace
@@ -119,7 +118,6 @@ __all__ = [
     "LTLRewriteStep",
     "PersistenceResult",
     "PersistenceStep",
-    "ReachabilityResult",
     "ReachabilityStep",
     "TransitionSystemOverlay",
     "check_invariant",
@@ -181,6 +179,6 @@ __all__ = [
     "LTLModelCheckingResult",
     "LTLModelCheckingStep",
     "check_ltl",
-    "trace_check_ltl",
+    "trace_ltl",
     "transition_system_automaton_product",
 ]

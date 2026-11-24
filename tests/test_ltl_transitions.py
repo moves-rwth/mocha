@@ -241,7 +241,7 @@ class LTLTransitionTests(unittest.TestCase):
             self.assertEqual(step.iteration, index)
             self.assertEqual(step.source_index, index)
             self.assertEqual(step.source, enumeration.elementary_sets[index])
-            self.assertEqual(step.input, trace.result.table.source_labels[index])
+            self.assertEqual(step.valuation, trace.result.table.source_labels[index])
             self.assertEqual(len(step.restrictions), 2)
             previous = frozenset(range(13))
             for restriction in step.restrictions:
@@ -259,7 +259,7 @@ class LTLTransitionTests(unittest.TestCase):
             self.assertEqual(step.targets, previous)
             self.assertEqual({i + 1 for i in step.targets}, self.targets(trace.result.table, index + 1))
         with self.assertRaises(FrozenInstanceError):
-            trace.steps[0].input = frozenset()
+            trace.steps[0].valuation = frozenset()
         with self.assertRaises(FrozenInstanceError):
             trace.steps[0].restrictions[0].rule = "changed"
 
@@ -314,18 +314,18 @@ class LTLTransitionTests(unittest.TestCase):
             unusual.formula, unusual.elementary_sets,
         ).table.to_markdown())
 
-    def test_rendered_source_explanation_starts_with_input_then_restrictions(self):
+    def test_rendered_source_explanation_starts_with_valuation_then_restrictions(self):
         enumeration = self.exercise()
         trace = trace_transition_relation(enumeration.formula, enumeration.elementary_sets)
         step = trace.steps[1]
         text = step.to_markdown()
         self.assertIn("Transitions from B2", text)
-        self.assertIn("Input: ∅", text)
-        self.assertLess(text.index("Input:"), text.index("1."))
+        self.assertIn("Valuation: ∅", text)
+        self.assertLess(text.index("Valuation:"), text.index("1."))
         self.assertIn("(◯b) is excluded from B2", text)
         self.assertIn("Remaining targets: {B2, B4, B10, B11}", text)
         self.assertIn("Result: B2 —∅→ {B2, B4, B10, B11}", text)
-        self.assertIn("Input: {a}", trace.steps[10].to_markdown())
+        self.assertIn("Valuation: {a}", trace.steps[10].to_markdown())
 
     def test_every_temporal_formula_is_explained_even_after_targets_become_empty(self):
         enumeration = enumerate_elementary_sets(parse_ltl('X false & X"p" & X!"p"'))
