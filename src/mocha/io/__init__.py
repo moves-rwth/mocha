@@ -9,7 +9,11 @@ from .transition_system import (
     validate_dict,
 )
 
+from .ctl import CTLParseError, parse_ctl
+
 __all__ = [
+    "CTLParseError",
+    "parse_ctl",
     "LTLParseError",
     "parse_ltl",
     "from_dict",
